@@ -66,6 +66,7 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       """.stripMargin) shouldBe \/-(
       """
         |case class Product(a:List[product.definitions.Nested], b:Option[List[Double]])
+        |
         |case class Nested()
         | """.stripMargin.trim)
   }

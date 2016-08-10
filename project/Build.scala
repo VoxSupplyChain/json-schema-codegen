@@ -17,15 +17,15 @@ object Build extends Build {
     resolvers += Resolver.url(
       "vox-public-ivy",
       url("http://dl.bintray.com/content/voxsupplychain/ivy-public"))(
-        Resolver.ivyStylePatterns),
-
-    packageLabels in bintray := Seq("json-schema", "parser"),
+      Resolver.ivyStylePatterns),
 
     publishMavenStyle := false,
 
     licenses += ("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0")),
 
     repository in bintray := "ivy-public",
+
+    packageLabels in bintray := Seq("json-schema", "code", "generator"),
 
     bintrayOrganization in bintray := Some("voxsupplychain")
 
@@ -36,19 +36,18 @@ object Build extends Build {
   lazy val codegen = Project(id = "json-schema-codegen", base = file("codegen"))
     .settings(
       libraryDependencies ++= Seq(
-        "com.voxsupplychain" %% "json-schema-parser" % "0.0.7",
+        "com.voxsupplychain" %% "json-schema-parser" % "0.9.0",
         "org.scalatest" % "scalatest_2.10" % "2.2.1" % "test",
         "org.scalacheck" %% "scalacheck" % "1.12.0" % "test"
-      ),
-      packageLabels in bintray := Seq("json-schema", "code", "generator")
+      )
     )
     .settings(projectSettings: _*)
 
 
   lazy val sbtplugin: Project = Project(id = "json-schema-codegen-sbt",
     base = file("sbt-plugin")).dependsOn(codegen).settings(
-      sbtPlugin := true
-    )
+    sbtPlugin := true
+  )
     .settings(projectSettings: _*)
 
 }
