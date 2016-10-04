@@ -62,3 +62,8 @@ In build.sbt :
 ```
 
 Code is generated during the compile phase. 
+
+## Resources
+
+ * JSON without JSON-schema is a "crazy mess" - GOTO 2016 • What I Wish I Had Known Before Scaling Uber to 1000 Services • Matt Ranney https://youtu.be/kb-m2fasdDY?t=870
+
