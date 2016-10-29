@@ -47,7 +47,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
   }
 
 
-  def array(schema: Schema, name: Option[String]): SValidation[LangType] =
+  def array(schema: Schema, name: Option[String]): SValidation[LangType] = {
     schema.array.toRightDisjunction(s"not array type: ${schema.types}").flatMap {
       array =>
         val genClassName: Option[String] = name.map(_ + "0")
@@ -58,6 +58,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
 
         scalaz.Disjunction.fromEither(arrayDef.toEither.leftMap(e => s"Type of Array $genClassName not found: $e"))
     }
+  }
 
   def simple(schema: Schema): SValidation[LangType] = {
     schema.types.headOption.flatMap(json2predef.get).toRightDisjunction("Type is not simple") map {
