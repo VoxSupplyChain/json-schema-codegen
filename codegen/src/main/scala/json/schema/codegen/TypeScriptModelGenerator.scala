@@ -18,7 +18,7 @@ object TypeScriptModelGenerator {
     SimpleType.integer -> PredefType(preDefScope, "number"),
     SimpleType.boolean -> PredefType(preDefScope, "boolean"),
     SimpleType.number -> PredefType(preDefScope, "number"),
-    SimpleType.`null` -> PredefType(preDefScope, "any")
+    SimpleType.aNull -> PredefType(preDefScope, "any")
   )
 
   def apply[N: Numeric](schema: SchemaDocument[N]): SValidation[Set[LangType]] = {
