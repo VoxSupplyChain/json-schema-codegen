@@ -159,4 +159,31 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |val b = Value("b") }""".stripMargin.trim)
   }
 
+  it should "generate recursive references" in {
+    gen("""
+      |{
+      |  "id": "http://some/reference",
+      |  "type": "object",
+      |  "properties": {
+      |    "a": {
+      |      "$ref": "#/definitions/b"
+      |    }
+      |  },
+      |  "definitions": {
+      |    "b": {
+      |      "type": "object",
+      |      "required": ["us"],
+      |      "properties": {
+      |        "us": {
+      |          "$ref": "#/definitions/b"
+      |        }
+      |      }
+      |    }
+      |  }
+      |}
+      |""".stripMargin.trim) shouldBe \/-("""
+      |case class Reference(a:Option[reference.definitions.B])
+      |case class B(us:reference.definitions.B)
+      |""".stripMargin.trim)
+  }
 }
