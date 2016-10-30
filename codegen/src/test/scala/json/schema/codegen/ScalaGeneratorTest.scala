@@ -159,7 +159,7 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |val b = Value("b") }""".stripMargin.trim)
   }
 
-  it should "generate recursive references" in {
+  it should "generate recursive references to a single class" in {
     gen("""
       |{
       |  "id": "http://some/reference",
@@ -184,6 +184,44 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |""".stripMargin.trim) shouldBe \/-("""
       |case class Reference(a:Option[reference.definitions.B])
       |case class B(us:reference.definitions.B)
+      |""".stripMargin.trim)
+  }
+
+  it should "generate recursive references through multiple classes" in {
+    gen("""
+      |{
+      |  "id": "http://some/reference",
+      |  "type": "object",
+      |  "properties": {
+      |    "a": {
+      |      "$ref": "#/definitions/b"
+      |    }
+      |  },
+      |  "definitions": {
+      |    "b": {
+      |      "type": "object",
+      |      "required": ["next"],
+      |      "properties": {
+      |        "next": {
+      |          "$ref": "#/definitions/c"
+      |        }
+      |      }
+      |    },
+      |    "c": {
+      |      "type": "object",
+      |      "required": ["next"],
+      |      "properties": {
+      |        "next": {
+      |          "$ref": "#/definitions/b"
+      |        }
+      |      }
+      |    }
+      |  }
+      |}
+      |""".stripMargin.trim) shouldBe \/-("""
+      |case class Reference(a:Option[reference.definitions.B])
+      |case class B(next:reference.definitions.C)
+      |case class C(next:reference.definitions.B)
       |""".stripMargin.trim)
   }
 }
