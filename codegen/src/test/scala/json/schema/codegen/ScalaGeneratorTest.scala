@@ -224,4 +224,54 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |case class C(next:reference.definitions.B)
       |""".stripMargin.trim)
   }
+
+  it should "expand allOf" in {
+    gen("""
+      |{
+      |  "id": "http://some/reference",
+      |  "type": "object",
+      |  "properties": {
+      |    "a": {
+      |      "$ref": "#/definitions/a"
+      |    },
+      |    "b": {
+      |      "$ref": "#/definitions/b"
+      |    },
+      |    "c": {
+      |      "$ref": "#/definitions/c"
+      |    }
+      |  },
+      |  "definitions": {
+      |    "a": {
+      |      "type": "object",
+      |      "allOf": [
+      |        {"$ref": "#/definitions/b"},
+      |        {"$ref": "#/definitions/c"}
+      |      ]
+      |    },
+      |    "b": {
+      |      "type": "object",
+      |      "properties": {
+      |        "str": {
+      |          "type": "string"
+      |        }
+      |      }
+      |    },
+      |    "c": {
+      |      "type": "object",
+      |      "properties": {
+      |        "num": {
+      |          "type": "number"
+      |        }
+      |      }
+      |    }
+      |  }
+      |}
+      |""".stripMargin.trim) shouldBe \/-("""
+      |case class A(str:Option[String], num:Option[Double])
+      |case class Reference(a:Option[reference.definitions.A], b:Option[reference.definitions.B], c:Option[reference.definitions.C])
+      |case class B(str:Option[String])
+      |case class C(num:Option[Double])
+      |""".stripMargin.trim)
+  }
 }

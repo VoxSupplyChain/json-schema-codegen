@@ -1,7 +1,7 @@
 package json.schema.codegen
 
 import argonaut.Json
-import json.schema.parser.{SchemaDocument, SimpleType}
+import json.schema.parser.{Property, SchemaDocument, SimpleType}
 
 import scalaz.Scalaz._
 
@@ -29,8 +29,9 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
         }
 
         val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map((buildProp _).tupled).toList
+        val allOfPropTypes: List[SValidation[LangTypeProperty]] = schema.allOf.flatMap(_.obj.map(_.properties.value.map((buildProp _).tupled).toList)).flatten
 
-        val propTypes: SValidation[List[LangTypeProperty]] = propertyTypes.sequence
+        val propTypes: SValidation[List[LangTypeProperty]] = (propertyTypes ++ allOfPropTypes).sequence
 
         for {
           props <- propTypes
