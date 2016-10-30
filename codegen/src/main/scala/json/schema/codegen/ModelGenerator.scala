@@ -17,9 +17,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
       obj =>
         val schemaClassName: SValidation[String] = className(schema, name)
 
-        val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map {
-          case (propName, propDefinition) =>
-
+        def buildProp(propName: String, propDefinition: Property[N]): SValidation[LangTypeProperty] = {
             val existingType = definedSchemas.get(propDefinition.schema).toRightDisjunction("no type")
 
             val propDef = existingType orElse any(propDefinition.schema, propName.some) map {
@@ -28,8 +26,9 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
             }
 
             scalaz.Disjunction.fromEither(propDef.toEither.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e"))
+        }
 
-        }.toList
+        val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map((buildProp _).tupled).toList
 
         val propTypes: SValidation[List[LangTypeProperty]] = propertyTypes.sequence
 
