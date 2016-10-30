@@ -25,7 +25,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
                 LangTypeProperty(propName, propDefinition.required, t)
             }
 
-            scalaz.Disjunction.fromEither(propDef.toEither.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e"))
+            propDef.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e")
         }
 
         val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map((buildProp _).tupled).toList
@@ -60,7 +60,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
             ArrayType(packageName(schema.id.getOrElse(schema.scope)), array.uniqueItems, nested)
         }
 
-        scalaz.Disjunction.fromEither(arrayDef.toEither.leftMap(e => s"Type of Array $genClassName not found: $e"))
+        arrayDef.leftMap(e => s"Type of Array $genClassName not found: $e")
     }
   }
 
