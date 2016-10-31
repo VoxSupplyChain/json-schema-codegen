@@ -28,7 +28,7 @@ object ScalaModelGenerator {
       SimpleType.boolean -> PredefType(preDefScope, "Boolean"),
       // same as schema's document type param
       SimpleType.number -> PredefType(preDefScope, implicitly[Numeric[N]].zero.getClass.getSimpleName),
-      SimpleType.`null` -> PredefType(preDefScope, "Any")
+      SimpleType.aNull -> PredefType(preDefScope, "Any")
     )
 
     val generator: ModelGenerator[N] = new ModelGenerator[N](json2scala, format2scala) with ScalaNaming
