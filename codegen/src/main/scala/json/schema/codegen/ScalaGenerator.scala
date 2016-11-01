@@ -219,6 +219,9 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         val nestedType = genPropertyType(a.nested)
         if (a.unique) s"Set[$nestedType]" else s"List[$nestedType]"
       case a: EnumType => withPackageReference(a)(a.identifier + ".Value")
+      case a: UnionType if a.members.nonEmpty =>
+        val (x :: xs) = a.members.map(genPropertyType).reverse
+        xs.foldLeft(x) { case (a, x) => s"Either[${x}, ${a}]" }
       case a: LangType => withPackageReference(a)(a.identifier)
     }
   }

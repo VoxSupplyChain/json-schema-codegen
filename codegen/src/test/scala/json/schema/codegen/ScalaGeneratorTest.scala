@@ -274,4 +274,58 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |case class C(num:Option[Double])
       |""".stripMargin.trim)
   }
+
+  it should "create union type" in {
+    gen(
+      """
+      |{
+      |  "type": "object",
+      |  "id": "root",
+      |  "properties": {
+      |    "thing": {
+      |      "$ref": "#/definitions/thing"
+      |    }
+      |  },
+      |  "required": ["thing"],
+      |  "definitions": {
+      |    "thing": {
+      |      "type": "object",
+      |      "additionalProperties": {
+      |        "oneOf": [
+      |          {"$ref": "#/definitions/a"},
+      |          {"$ref": "#/definitions/b"},
+      |          {"$ref": "#/definitions/c"}
+      |        ]
+      |      }
+      |    },
+      |    "a": {
+      |      "type": "object",
+      |      "properties": {
+      |        "foo": { "type": "string" }
+      |      }
+      |    },
+      |    "b": {
+      |      "type": "object",
+      |      "properties": {
+      |        "bar": { "type": "string" }
+      |      }
+      |    },
+      |    "c": {
+      |      "type": "object",
+      |      "properties": {
+      |        "baz": { "type": "string" }
+      |      }
+      |    }
+      |  }
+      |}
+      """.stripMargin) shouldBe \/-(
+      s"""
+      |case class C(baz:Option[String])
+      |case class A(foo:Option[String])
+      |case class B(bar:Option[String])
+      |case class Root(thing:Either[root.definitions.A, Either[root.definitions.B, root.definitions.C]])
+      """.stripMargin.trim
+    )
+  }
+
 }
