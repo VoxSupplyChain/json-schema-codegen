@@ -1,3 +1,5 @@
+[![CircleCI](https://circleci.com/gh/VoxSupplyChain/json-schema-codegen.svg?style=svg)](https://circleci.com/gh/VoxSupplyChain/json-schema-codegen)
+
 # json-schema-codegen
 
 Model and Serialization source code generator from a defined Json-Schema.
