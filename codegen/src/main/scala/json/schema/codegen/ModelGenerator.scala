@@ -100,12 +100,23 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
 
   }
 
+  def oneOf(schema: Schema, name: Option[String]): SValidation[LangType] = {
+    (for {
+      obj <- schema.obj
+      additionalProperties <- obj.additionalProperties
+      if additionalProperties.oneOf.nonEmpty
+      clazzName <- className(schema, name).toOption
+      downstream <- additionalProperties.oneOf.map(any(_, None)).sequence.toOption
+    } yield {
+      UnionType(packageName(schema.scope), clazzName, downstream)
+    }).toRightDisjunction("Unable to find additionalProperties")
+  }
 
   def any(schema: Schema, name: Option[String]): SValidation[LangType] = {
     if (schema.types.size != 1)
       ref(schema) orElse s"One type is required in: $schema".left
     else
-      enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
+      oneOf(schema, name) orElse enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
   }
 
 }

@@ -274,6 +274,25 @@ class ScalaModelGeneratorTest extends FlatSpec with Matchers {
     )
   }
 
+  it should "correctly unpack a union type" in {
+    parse(
+      """
+        |{
+        |  "id": "root",
+        |  "type": "object",
+        |  "additionalProperties": {
+        |    "oneOf": [
+        |      {"type": "string"},
+        |      {"type": "number"},
+        |      {"type": "string"}
+        |    ]
+        |  }
+        |}
+      """.stripMargin) shouldBe \/-(
+        UnionType("", "Root", List(PredefType("", "String"), PredefType("", "Double"), PredefType("", "String")))
+      )
+  }
+
   it should "preserve scope of referenced types" in {
     val models: SValidation[Set[LangType]] = parseAll(
       """
