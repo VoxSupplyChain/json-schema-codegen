@@ -17,10 +17,10 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
       obj =>
         val schemaClassName: SValidation[String] = className(schema, name)
 
-        def buildProp(propName: String, propDefinition: Property[N]): SValidation[LangTypeProperty] = {
+        def buildProp(propName: String, propDefinition: Property[N], parentPrefix: Option[String]): SValidation[LangTypeProperty] = {
             val existingType = definedSchemas.get(propDefinition.schema).toRightDisjunction("no type")
 
-            val propDef = existingType orElse any(propDefinition.schema, propName.some) map {
+            val propDef = existingType orElse any(propDefinition.schema, propName.some, parentPrefix) map {
               t =>
                 LangTypeProperty(propName, propDefinition.required, t)
             }
@@ -31,8 +31,8 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
         for {
           className <- schemaClassName
           props <- {
-            val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map({ case (name, definition) => buildProp(name, definition) }).toList
-            val allOfPropTypes: List[SValidation[LangTypeProperty]] = schema.allOf.flatMap(_.obj.map(_.properties.value.map({ case (name, definition) => buildProp(name, definition) }).toList)).flatten
+            val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map({ case (name, definition) => buildProp(name, definition, Some(className)) }).toList
+            val allOfPropTypes: List[SValidation[LangTypeProperty]] = schema.allOf.flatMap(_.obj.map(_.properties.value.map({ case (name, definition) => buildProp(name, definition, None) }).toList)).flatten
 
             (propertyTypes ++ allOfPropTypes).sequence
           }
