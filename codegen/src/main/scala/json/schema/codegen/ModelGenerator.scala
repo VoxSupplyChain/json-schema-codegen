@@ -76,11 +76,11 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     }
   }
 
-  def enum(schema: Schema, name: Option[String]): SValidation[LangType] = {
+  def enum(schema: Schema, name: Option[String], parentPrefix: Option[String] = None): SValidation[LangType] = {
 
     for {
       t <- schema.types.headOption.toRightDisjunction("Type is required")
-      className <- className(schema, name)
+      className <- className(schema, name, parentPrefix)
       enums: Set[Json] <- schema.enums.isEmpty ? "Enum not defined".left[Set[Json]] | schema.enums.right[String]
       enumNestedSchema = schema.copy(enums = Set.empty)
       nestedType <- any(enumNestedSchema, (className + "Value").some)
@@ -112,11 +112,11 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     }).toRightDisjunction("Unable to find additionalProperties")
   }
 
-  def any(schema: Schema, name: Option[String]): SValidation[LangType] = {
+  def any(schema: Schema, name: Option[String], parentPrefix: Option[String] = None): SValidation[LangType] = {
     if (schema.types.size != 1)
       ref(schema) orElse s"One type is required in: $schema".left
     else
-      oneOf(schema, name) orElse enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
+      oneOf(schema, name) orElse enum(schema, name, parentPrefix) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
   }
 
 }
