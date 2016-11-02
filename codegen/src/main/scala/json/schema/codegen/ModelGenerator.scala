@@ -28,14 +28,14 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
             propDef.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e")
         }
 
-        val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map((buildProp _).tupled).toList
-        val allOfPropTypes: List[SValidation[LangTypeProperty]] = schema.allOf.flatMap(_.obj.map(_.properties.value.map((buildProp _).tupled).toList)).flatten
-
-        val propTypes: SValidation[List[LangTypeProperty]] = (propertyTypes ++ allOfPropTypes).sequence
-
         for {
-          props <- propTypes
           className <- schemaClassName
+          props <- {
+            val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map({ case (name, definition) => buildProp(name, definition) }).toList
+            val allOfPropTypes: List[SValidation[LangTypeProperty]] = schema.allOf.flatMap(_.obj.map(_.properties.value.map({ case (name, definition) => buildProp(name, definition) }).toList)).flatten
+
+            (propertyTypes ++ allOfPropTypes).sequence
+          }
           additional <- obj.additionalProperties.toList.map(nested => any(nested, (className + "Additional").some))
             .sequence.map(_.headOption)
         } yield {
