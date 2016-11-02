@@ -28,8 +28,9 @@ trait Naming {
   }
 
   def className(schema: SchemaDocument[_], defaultName: Option[String]): SValidation[String] =
-    schema.id.toRightDisjunction("Schema has no Id").map(className) orElse defaultName.toRightDisjunction("Default name not given").map(
-      name => escapeReserved(underscoreToCamel(identifier(name))).capitalize)
+    schema.id.toRightDisjunction("Schema has no Id").map(className) orElse (for {
+      name <- defaultName.toRightDisjunction("Default name not given")
+    } yield escapeReserved(underscoreToCamel(identifier(name))).capitalize)
 
   def identifier(scope: URI): scalaz.Validation[String, String] = {
     val str = scope.toString
