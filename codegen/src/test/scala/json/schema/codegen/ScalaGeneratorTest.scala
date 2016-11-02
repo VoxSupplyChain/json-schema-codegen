@@ -133,6 +133,9 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |"required":["type"]
         |}
       """.stripMargin) shouldBe \/-( """case class Product(_type:String, b:Option[Double])""".stripMargin.trim)
+  }
+
+  it should "munge and camelcase parameter names" in {
     gen(
       """
         |{
