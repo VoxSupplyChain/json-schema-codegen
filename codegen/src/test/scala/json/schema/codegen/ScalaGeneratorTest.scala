@@ -148,6 +148,33 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       """.stripMargin) shouldBe \/-( """case class Product(bigNumber:Option[Double])""".stripMargin.trim)
   }
 
+  it should "generate type with scoped properties" in {
+    gen("""
+        |{
+        |  "id": "foo",
+        |  "type": "object",
+        |  "additionalProperties": false,
+        |  "required": [
+        |    "type"
+        |  ],
+        |  "properties": {
+        |    "type": {
+        |      "type": "string",
+        |      "enum": [
+        |        "basic",
+        |        "advanced"
+        |      ]
+        |    }
+        |  }
+        |}
+      """.stripMargin) shouldBe \/-(
+      """
+        |case class Foo(_type:FooType.Value)
+        |object FooType extends Enumeration { val basic = Value("basic")
+        |val advanced = Value("advanced") }""".stripMargin.trim
+      )
+  }
+
   it should "generate type with escaped name" in {
     gen(
       """
