@@ -46,6 +46,11 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     }
   }
 
+  def ref(schema: Schema): SValidation[LangType] = {
+    for {
+      ref <- schema.nestedSchemas.get("$ref").toRightDisjunction(s"not ref type")
+    } yield ClassType(packageName(ref.id.getOrElse(ref.scope)), className(ref.id.getOrElse(ref.scope)), List.empty, Option.empty)
+  }
 
   def array(schema: Schema, name: Option[String]): SValidation[LangType] = {
     schema.array.toRightDisjunction(s"not array type: ${schema.types}").flatMap {
@@ -98,7 +103,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
 
   def any(schema: Schema, name: Option[String]): SValidation[LangType] = {
     if (schema.types.size != 1)
-      s"One type is required in: $schema".left
+      ref(schema) orElse s"One type is required in: $schema".left
     else
       enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
   }
