@@ -31,16 +31,16 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         else {
           val packageDecl = packageName.map(p => s"package $p").getOrElse("")
           s"""
-          $packageDecl
-
-          import argonaut._, Argonaut._
-
-          trait $codecClassName {
-            $codecs
-          }
-
-          object $codecClassName extends $codecClassName
-          """.stripMargin.right
+          |$packageDecl
+          |
+          |import argonaut._, Argonaut._
+          |
+          |trait $codecClassName {
+          |  $codecs
+          |}
+          |
+          |object $codecClassName extends $codecClassName
+          |""".stripMargin.right
         }
 
     }
@@ -73,16 +73,16 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         else {
           val packageDecl = packageName.map(p => s"package $p").getOrElse("")
           s"""
-              $packageDecl
-
-              import argonaut._, Argonaut._
-
-              trait $codecClassName  $referencedCodes {
-              $codecs
-              }
-
-              object $codecClassName extends $codecClassName
-          """.stripMargin.right
+          |$packageDecl
+          |
+          |import argonaut._, Argonaut._
+          |
+          |trait $codecClassName $referencedCodes {
+          |  $codecs
+          |}
+          |
+          |object $codecClassName extends $codecClassName
+          |""".stripMargin.right
         }
 
     }
@@ -118,24 +118,24 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         val addClassReference = genPropertyType(additionalType)
         val addPropNames = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         s"""
-           private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
-
-           implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
-              v =>
-                val j = ${className}SimpleCodec.encode(v)
-                val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
-                nj.hcursor.downField("$addPropName").deleteGoParent.focus.getOrElse(nj)
-            }, DecodeJson {
-              c =>
-                val md: DecodeJson[Option[Map[String, $addClassReference]]] = implicitly
-                val od: DecodeJson[$className] = ${className}SimpleCodec
-                for {
-                  o <- od.decode(c)
-                  withoutProps = List($propNames).foldLeft(c)((c, f) => c.downField(f).deleteGoParent.hcursor.getOrElse(c))
-                  m <- md.decode(withoutProps)
-                } yield o.copy($addPropName = m)
-            })
-       """.stripMargin
+        |private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
+        |
+        |implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
+        |  v =>
+        |    val j = ${className}SimpleCodec.encode(v)
+        |    val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
+        |    nj.hcursor.downField("$addPropName").deleteGoParent.focus.getOrElse(nj)
+        |}, DecodeJson {
+        |  c =>
+        |    val md: DecodeJson[Option[Map[String, $addClassReference]]] = implicitly
+        |    val od: DecodeJson[$className] = ${className}SimpleCodec
+        |    for {
+        |      o <- od.decode(c)
+        |      withoutProps = List($propNames).foldLeft(c)((c, f) => c.downField(f).deleteGoParent.hcursor.getOrElse(c))
+        |      m <- md.decode(withoutProps)
+        |    } yield o.copy($addPropName = m)
+        |})
+        |""".stripMargin
     }
   }
 
@@ -144,69 +144,71 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     val enumNameReference = genPropertyType(c)
     val nestedTypeReference = genPropertyType(c.nested)
     s"""
-       implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (nestedTypeReference == "String") "toString" else "id"}.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
-         s: $nestedTypeReference =>
-          try{
-            DecodeResult.ok(${if (c.nested.identifier == "String") enumTypeName + ".withName" else enumTypeName}(${if (c.nested.identifier == "String") "s" else "s.toInt"}))
-          } catch {
-            case e:NoSuchElementException => DecodeResult.fail("$enumTypeName", j.history)
-          }
-       })
-       """.stripMargin
+    |implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (nestedTypeReference == "String") "toString" else "id"}.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
+    |  s: $nestedTypeReference =>
+    |    try{
+    |      DecodeResult.ok(${if (c.nested.identifier == "String") enumTypeName + ".withName" else enumTypeName}(${if (c.nested.identifier == "String") "s" else "s.toInt"}))
+    |    } catch {
+    |      case e:NoSuchElementException => DecodeResult.fail("$enumTypeName", j.history)
+    |    }
+    |})
+    |""".stripMargin
   }
 
   def genCodecURI(): String =
     """
-      implicit def URICodec: CodecJson[java.net.URI] = CodecJson.derived(
-        EncodeJson(v => jString(v.toString)),
-        StringDecodeJson.flatMap {
-          uri =>
-            DecodeJson(
-              j => {
-                try{
-                  DecodeResult.ok(new java.net.URI(uri))
-                } catch {
-                  case e:NoSuchElementException => DecodeResult.fail("URI", j.history)
-                }
-              }
-            )
-        })
-    """.stripMargin
+    |implicit def URICodec: CodecJson[java.net.URI] = CodecJson.derived(
+    |  EncodeJson(v => jString(v.toString)),
+    |  StringDecodeJson.flatMap {
+    |    uri =>
+    |      DecodeJson(
+    |        j => {
+    |          try{
+    |            DecodeResult.ok(new java.net.URI(uri))
+    |          } catch {
+    |            case e:NoSuchElementException => DecodeResult.fail("URI", j.history)
+    |          }
+    |        }
+    |      )
+    |  }
+    |)
+    |""".stripMargin
 
   def genCodecDate(): String =
     s"""
-      private def isoDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-      implicit def DateCodec: CodecJson[java.util.Date] = CodecJson.derived(
-        EncodeJson(v => jString(isoDate.format(v))), StringDecodeJson.flatMap {
-          time =>
-            DecodeJson(
-              j => {
-               try {
-                 DecodeResult.ok(isoDate.parse(time))
-               } catch {
-                 case e: NoSuchElementException => DecodeResult.fail("Inet6Address", j.history)
-               }
-             }
-            )
-        })
+    |private def isoDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    |implicit def DateCodec: CodecJson[java.util.Date] = CodecJson.derived(
+    |  EncodeJson(v => jString(isoDate.format(v))), StringDecodeJson.flatMap {
+    |    time =>
+    |      DecodeJson(
+    |        j => {
+    |         try {
+    |           DecodeResult.ok(isoDate.parse(time))
+    |         } catch {
+    |           case e: NoSuchElementException => DecodeResult.fail("Inet6Address", j.history)
+    |         }
+    |       }
+    |      )
+    |  })
     """.stripMargin
 
   def genCodecInetAddress(v: String): String =
     s"""
-    implicit def Inet${v}AddressCodec: CodecJson[java.net.Inet${v}Address] = CodecJson.derived(
-      EncodeJson(v => jString(v.toString.substring(1))), StringDecodeJson.flatMap {
-        addr =>
-          DecodeJson(
-            j => {
-              try {
-                DecodeResult.ok(java.net.InetAddress.getByName(addr).asInstanceOf[java.net.Inet${v}Address])
-              } catch {
-                case e: NoSuchElementException => DecodeResult.fail("Inet${v}Address", j.history)
-              }
-            }
-          )
-      })
-      """.stripMargin
+    |implicit def Inet${v}AddressCodec: CodecJson[java.net.Inet${v}Address] = CodecJson.derived(
+    |  EncodeJson(v => jString(v.toString.substring(1))), StringDecodeJson.flatMap {
+    |    addr =>
+    |      DecodeJson(
+    |        j => {
+    |          try {
+    |            DecodeResult.ok(java.net.InetAddress.getByName(addr).asInstanceOf[java.net.Inet${v}Address])
+    |          } catch {
+    |            case e: NoSuchElementException => DecodeResult.fail("Inet${v}Address", j.history)
+    |          }
+    |        }
+    |      )
+    |  }
+    |)
+    |""".stripMargin
 
 
   private def withPackageReference(t: LangType)(name: => String): String = if (t.scope.isEmpty) name else t.scope + "." + name
@@ -217,6 +219,9 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         val nestedType = genPropertyType(a.nested)
         if (a.unique) s"Set[$nestedType]" else s"List[$nestedType]"
       case a: EnumType => withPackageReference(a)(a.identifier + ".Value")
+      case a: UnionType if a.members.nonEmpty =>
+        val (x :: xs) = a.members.map(genPropertyType).reverse
+        xs.foldLeft(x) { case (a, x) => s"Either[${x}, ${a}]" }
       case a: LangType => withPackageReference(a)(a.identifier)
     }
   }
@@ -274,7 +279,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   def memberName(s: String): Option[String] = {
     val camel: String = underscoreToCamel(identifier(s))
-    Some(escapeReserved(camel))
+    Some(escapeReserved(camel, None))
   }
 
   def languageModel[N: Numeric](schema: SchemaDocument[N]): SValidation[Set[LangType]] = ScalaModelGenerator(schema)

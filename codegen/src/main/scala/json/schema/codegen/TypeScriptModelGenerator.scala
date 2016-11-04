@@ -24,7 +24,7 @@ object TypeScriptModelGenerator {
   def apply[N: Numeric](schema: SchemaDocument[N]): SValidation[Set[LangType]] = {
 
     val generator: ModelGenerator[N] = new ModelGenerator[N](json2ts, format2ts) with TypeScriptNaming {
-      override def enum(schema: Schema, name: Option[String]): SValidation[LangType] = "enum not supported".left
+      override def enum(schema: Schema, name: Option[String], parentPrefix: Option[String]): SValidation[LangType] = "enum not supported".left
     }
 
     val typeName = generator.className(schema.scope).some

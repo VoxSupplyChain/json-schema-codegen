@@ -133,6 +133,9 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |"required":["type"]
         |}
       """.stripMargin) shouldBe \/-( """case class Product(_type:String, b:Option[Double])""".stripMargin.trim)
+  }
+
+  it should "munge and camelcase parameter names" in {
     gen(
       """
         |{
@@ -143,6 +146,33 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |}
         |}
       """.stripMargin) shouldBe \/-( """case class Product(bigNumber:Option[Double])""".stripMargin.trim)
+  }
+
+  it should "generate type with scoped properties" in {
+    gen("""
+        |{
+        |  "id": "foo",
+        |  "type": "object",
+        |  "additionalProperties": false,
+        |  "required": [
+        |    "type"
+        |  ],
+        |  "properties": {
+        |    "type": {
+        |      "type": "string",
+        |      "enum": [
+        |        "basic",
+        |        "advanced"
+        |      ]
+        |    }
+        |  }
+        |}
+      """.stripMargin) shouldBe \/-(
+      """
+        |case class Foo(_type:FooType.Value)
+        |object FooType extends Enumeration { val basic = Value("basic")
+        |val advanced = Value("advanced") }""".stripMargin.trim
+      )
   }
 
   it should "generate type with escaped name" in {
@@ -224,4 +254,108 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |case class C(next:reference.definitions.B)
       |""".stripMargin.trim)
   }
+
+  it should "expand allOf" in {
+    gen("""
+      |{
+      |  "id": "http://some/reference",
+      |  "type": "object",
+      |  "properties": {
+      |    "a": {
+      |      "$ref": "#/definitions/a"
+      |    },
+      |    "b": {
+      |      "$ref": "#/definitions/b"
+      |    },
+      |    "c": {
+      |      "$ref": "#/definitions/c"
+      |    }
+      |  },
+      |  "definitions": {
+      |    "a": {
+      |      "type": "object",
+      |      "allOf": [
+      |        {"$ref": "#/definitions/b"},
+      |        {"$ref": "#/definitions/c"}
+      |      ]
+      |    },
+      |    "b": {
+      |      "type": "object",
+      |      "properties": {
+      |        "str": {
+      |          "type": "string"
+      |        }
+      |      }
+      |    },
+      |    "c": {
+      |      "type": "object",
+      |      "properties": {
+      |        "num": {
+      |          "type": "number"
+      |        }
+      |      }
+      |    }
+      |  }
+      |}
+      |""".stripMargin.trim) shouldBe \/-("""
+      |case class A(str:Option[String], num:Option[Double])
+      |case class Reference(a:Option[reference.definitions.A], b:Option[reference.definitions.B], c:Option[reference.definitions.C])
+      |case class B(str:Option[String])
+      |case class C(num:Option[Double])
+      |""".stripMargin.trim)
+  }
+
+  it should "create union type" in {
+    gen(
+      """
+      |{
+      |  "type": "object",
+      |  "id": "root",
+      |  "properties": {
+      |    "thing": {
+      |      "$ref": "#/definitions/thing"
+      |    }
+      |  },
+      |  "required": ["thing"],
+      |  "definitions": {
+      |    "thing": {
+      |      "type": "object",
+      |      "additionalProperties": {
+      |        "oneOf": [
+      |          {"$ref": "#/definitions/a"},
+      |          {"$ref": "#/definitions/b"},
+      |          {"$ref": "#/definitions/c"}
+      |        ]
+      |      }
+      |    },
+      |    "a": {
+      |      "type": "object",
+      |      "properties": {
+      |        "foo": { "type": "string" }
+      |      }
+      |    },
+      |    "b": {
+      |      "type": "object",
+      |      "properties": {
+      |        "bar": { "type": "string" }
+      |      }
+      |    },
+      |    "c": {
+      |      "type": "object",
+      |      "properties": {
+      |        "baz": { "type": "string" }
+      |      }
+      |    }
+      |  }
+      |}
+      """.stripMargin) shouldBe \/-(
+      s"""
+      |case class C(baz:Option[String])
+      |case class A(foo:Option[String])
+      |case class B(bar:Option[String])
+      |case class Root(thing:Either[root.definitions.A, Either[root.definitions.B, root.definitions.C]])
+      """.stripMargin.trim
+    )
+  }
+
 }

@@ -42,6 +42,10 @@ package object codegen {
     override lazy val referenced: Set[LangType] = nested.referenced + nested
   }
 
+  sealed case class UnionType(scope: String, identifier: String, members: List[LangType]) extends LangType {
+    override lazy val referenced: Set[LangType] = members.toSet
+  }
+
   case class LangTypeProperty(name: String, required: Boolean, isa: LangType)
 
 

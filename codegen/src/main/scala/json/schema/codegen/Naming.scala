@@ -24,12 +24,13 @@ trait Naming {
   def className(scope: URI): String = {
     val dots = dotNotation(scope)
     val name = dots.lastOption.getOrElse(dots.head)
-    escapeReserved(underscoreToCamel(identifier(name))).capitalize
+    escapeReserved(underscoreToCamel(identifier(name)), None).capitalize
   }
 
-  def className(schema: SchemaDocument[_], defaultName: Option[String]): SValidation[String] =
-    schema.id.toRightDisjunction("Schema has no Id").map(className) orElse defaultName.toRightDisjunction("Default name not given").map(
-      name => escapeReserved(underscoreToCamel(identifier(name))).capitalize)
+  def className(schema: SchemaDocument[_], defaultName: Option[String], parentPrefix: Option[String] = None): SValidation[String] =
+    schema.id.toRightDisjunction("Schema has no Id").map(className) orElse (for {
+      name <- defaultName.toRightDisjunction("Default name not given")
+    } yield escapeReserved(underscoreToCamel(identifier(name)), parentPrefix).capitalize)
 
   def identifier(scope: URI): scalaz.Validation[String, String] = {
     val str = scope.toString
@@ -67,13 +68,13 @@ trait Naming {
 
     val dottedString = removeExtension(simpleScope).map(c => Character.isJavaIdentifierPart(c) ? c | '.').replaceAll("\\.+$", "").replaceAll("^\\.+", "")
 
-    dottedString.split('.').map(s => escapeReserved(underscoreToCamel(identifier(s))))
+    dottedString.split('.').map(s => escapeReserved(underscoreToCamel(identifier(s)), None))
   }
 
 
   def escapePropertyReserved(s: String): Option[String] = if (reservedKeywords.contains(s)) none else s.some
 
-  def escapeReserved(s: String): String = escapePropertyReserved(s).getOrElse('_' + s)
+  def escapeReserved(s: String, parentPrefix: Option[String]): String = escapePropertyReserved(s).orElse(parentPrefix.map(_ + s.capitalize)).getOrElse('_' + s)
 
   val reservedKeywords: Set[String]
 

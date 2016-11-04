@@ -1,7 +1,7 @@
 package json.schema.codegen
 
 import argonaut.Json
-import json.schema.parser.{SchemaDocument, SimpleType}
+import json.schema.parser.{Property, SchemaDocument, SimpleType}
 
 import scalaz.Scalaz._
 
@@ -17,25 +17,25 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
       obj =>
         val schemaClassName: SValidation[String] = className(schema, name)
 
-        val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map {
-          case (propName, propDefinition) =>
-
+        def buildProp(propName: String, propDefinition: Property[N], parentPrefix: Option[String]): SValidation[LangTypeProperty] = {
             val existingType = definedSchemas.get(propDefinition.schema).toRightDisjunction("no type")
 
-            val propDef = existingType orElse any(propDefinition.schema, propName.some) map {
+            val propDef = existingType orElse any(propDefinition.schema, propName.some, parentPrefix) map {
               t =>
                 LangTypeProperty(propName, propDefinition.required, t)
             }
 
-            scalaz.Disjunction.fromEither(propDef.toEither.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e"))
-
-        }.toList
-
-        val propTypes: SValidation[List[LangTypeProperty]] = propertyTypes.sequence
+            propDef.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e")
+        }
 
         for {
-          props <- propTypes
           className <- schemaClassName
+          props <- {
+            val propertyTypes: List[SValidation[LangTypeProperty]] = obj.properties.value.map({ case (name, definition) => buildProp(name, definition, Some(className)) }).toList
+            val allOfPropTypes: List[SValidation[LangTypeProperty]] = schema.allOf.flatMap(_.obj.map(_.properties.value.map({ case (name, definition) => buildProp(name, definition, None) }).toList)).flatten
+
+            (propertyTypes ++ allOfPropTypes).sequence
+          }
           additional <- obj.additionalProperties.toList.map(nested => any(nested, (className + "Additional").some))
             .sequence.map(_.headOption)
         } yield {
@@ -61,7 +61,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
             ArrayType(packageName(schema.id.getOrElse(schema.scope)), array.uniqueItems, nested)
         }
 
-        scalaz.Disjunction.fromEither(arrayDef.toEither.leftMap(e => s"Type of Array $genClassName not found: $e"))
+        arrayDef.leftMap(e => s"Type of Array $genClassName not found: $e")
     }
   }
 
@@ -76,11 +76,11 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     }
   }
 
-  def enum(schema: Schema, name: Option[String]): SValidation[LangType] = {
+  def enum(schema: Schema, name: Option[String], parentPrefix: Option[String] = None): SValidation[LangType] = {
 
     for {
       t <- schema.types.headOption.toRightDisjunction("Type is required")
-      className <- className(schema, name)
+      className <- className(schema, name, parentPrefix)
       enums: Set[Json] <- schema.enums.isEmpty ? "Enum not defined".left[Set[Json]] | schema.enums.right[String]
       enumNestedSchema = schema.copy(enums = Set.empty)
       nestedType <- any(enumNestedSchema, (className + "Value").some)
@@ -100,12 +100,23 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
 
   }
 
+  def oneOf(schema: Schema, name: Option[String]): SValidation[LangType] = {
+    (for {
+      obj <- schema.obj
+      additionalProperties <- obj.additionalProperties
+      if additionalProperties.oneOf.nonEmpty
+      clazzName <- className(schema, name).toOption
+      downstream <- additionalProperties.oneOf.map(any(_, None)).sequence.toOption
+    } yield {
+      UnionType(packageName(schema.scope), clazzName, downstream)
+    }).toRightDisjunction("Unable to find additionalProperties")
+  }
 
-  def any(schema: Schema, name: Option[String]): SValidation[LangType] = {
+  def any(schema: Schema, name: Option[String], parentPrefix: Option[String] = None): SValidation[LangType] = {
     if (schema.types.size != 1)
       ref(schema) orElse s"One type is required in: $schema".left
     else
-      enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
+      oneOf(schema, name) orElse enum(schema, name, parentPrefix) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
   }
 
 }
