@@ -9,7 +9,7 @@ import scalaz.std.AllInstances._
 import scalaz.syntax.all._
 import scalaz.syntax.std.all._
 import scala.collection.convert.WrapAsScala._
-
+import json.source.JsonSource._
 
 abstract class GeneratorCommand(codegens: List[CodeGenerator]) {
 
@@ -20,7 +20,7 @@ abstract class GeneratorCommand(codegens: List[CodeGenerator]) {
   def main(args: Array[String]) {
 
     val oargs = args.lift
-
+    val parser = new JsonSchemaParser[Double]
     val result = for {
       source <- oargs(0).map(new File(_)).toRightDisjunction("json-schema is required")
       targetDir <- oargs(1).map(new File(_)).toRightDisjunction("target folder is required")
@@ -28,7 +28,7 @@ abstract class GeneratorCommand(codegens: List[CodeGenerator]) {
       sources = if (source.isDirectory) source.listFiles(jsonFilesFilter).toSeq
       else Seq(source)
 
-      schemas <- JsonSchemaParser.parseAll(sources)
+      schemas <- parser.parseAll(sources)
       results <- codegens.map(gen => gen(schemas)(genRoot)).sequenceU
     } yield results
 

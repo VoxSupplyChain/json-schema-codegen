@@ -3,7 +3,11 @@ package json.schema.codegen
 import argonaut.Json
 import json.schema.parser.{SchemaDocument, SimpleType}
 
-import scalaz.Scalaz._
+import scalaz.std.list._
+import scalaz.syntax.either._
+import scalaz.syntax.std.boolean._
+import scalaz.syntax.std.option._
+import scalaz.syntax.traverse._
 
 abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType, PredefType], format2predef: Map[(PredefType, String), PredefType]) extends Naming {
 
@@ -27,7 +31,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
                 LangTypeProperty(propName, propDefinition.required, t)
             }
 
-            scalaz.Disjunction.fromEither(propDef.toEither.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e"))
+            propDef.leftMap(e => s"Type for field ${schemaClassName.toOption}.$propName not found: $e")
 
         }.toList
 
@@ -52,18 +56,12 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     } yield ClassType(packageName(ref.id.getOrElse(ref.scope)), className(ref.id.getOrElse(ref.scope)), List.empty, Option.empty)
   }
 
-  def array(schema: Schema, name: Option[String]): SValidation[LangType] = {
-    schema.array.toRightDisjunction(s"not array type: ${schema.types}").flatMap {
-      array =>
-        val genClassName: Option[String] = name.map(_ + "0")
-        val arrayDef = any(array.items.value.head, genClassName) map {
-          nested =>
-            ArrayType(packageName(schema.id.getOrElse(schema.scope)), array.uniqueItems, nested)
-        }
-
-        scalaz.Disjunction.fromEither(arrayDef.toEither.leftMap(e => s"Type of Array $genClassName not found: $e"))
-    }
-  }
+  def array(schema: Schema, name: Option[String]): SValidation[LangType] = for {
+    array <- schema.array.toRightDisjunction(s"not array type: ${schema.types}")
+    arrayschema <- array.items.value.headOption.toRightDisjunction(s"items ${name.getOrElse("")} is empty: ${schema.types}")
+    genClassName: Option[String] = name.map(_ + "0")
+    nested <- any(arrayschema, genClassName)
+  } yield ArrayType(packageName(schema.id.getOrElse(schema.scope)), array.uniqueItems, nested)
 
   def simple(schema: Schema): SValidation[LangType] = {
     schema.types.headOption.flatMap(json2predef.get).toRightDisjunction("Type is not simple") map {
@@ -81,16 +79,16 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     for {
       t <- schema.types.headOption.toRightDisjunction("Type is required")
       className <- className(schema, name)
-      enums: Set[Json] <- schema.enums.isEmpty ? "Enum not defined".left[Set[Json]] | schema.enums.right[String]
+      enums <- schema.enums.isEmpty ? "Enum not defined".left[Set[Json]] | schema.enums.right[String]
       enumNestedSchema = schema.copy(enums = Set.empty)
       nestedType <- any(enumNestedSchema, (className + "Value").some)
     } yield {
 
       val enumNested = t match {
-        case SimpleType.string => enums.flatMap(_.string.toSet)
-        case SimpleType.number => enums.flatMap(_.number.map(_.toDouble).toSet)
-        case SimpleType.integer => enums.flatMap(_.number.map( n=> n.toLong.getOrElse(n.toDouble.toLong)).toSet)
-        case SimpleType.boolean => enums.flatMap(_.bool.toSet)
+        case SimpleType.string => enums.flatMap(_.string)
+        case SimpleType.number => enums.flatMap(_.number.map(_.truncateToDouble))
+        case SimpleType.integer => enums.flatMap(_.number.map(n => n.toLong.getOrElse(n.truncateToLong)))
+        case SimpleType.boolean => enums.flatMap(_.bool)
       }
 
       val newType = EnumType(packageName(schema.scope), className, nestedType, enumNested)

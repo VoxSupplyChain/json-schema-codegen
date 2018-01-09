@@ -1,1 +1,1 @@
-addSbtPlugin("com.voxsupplychain" %% "json-schema-codegen-sbt" % "0.3.0")
+addSbtPlugin("com.voxsupplychain" %% "json-schema-codegen-sbt" % "0.3.1-SNAPSHOT")

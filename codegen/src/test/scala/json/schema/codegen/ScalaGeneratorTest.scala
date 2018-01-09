@@ -66,7 +66,6 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       """.stripMargin) shouldBe \/-(
       """
         |case class Product(a:List[product.definitions.Nested], b:Option[List[Double]])
-        |
         |case class Nested()
         | """.stripMargin.trim)
   }
@@ -220,8 +219,8 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |}
       |""".stripMargin.trim) shouldBe \/-("""
       |case class Reference(a:Option[reference.definitions.B])
-      |case class B(next:reference.definitions.C)
       |case class C(next:reference.definitions.B)
+      |case class B(next:reference.definitions.C)
       |""".stripMargin.trim)
   }
 }

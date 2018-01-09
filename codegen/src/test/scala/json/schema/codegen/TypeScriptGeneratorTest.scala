@@ -110,7 +110,6 @@ class TypeScriptGeneratorTest extends FlatSpec with Matchers with TypeScriptGene
         |a: product.definitions.Nested[];
         |b?: number[];
         |}
-        |
         |interface Nested {
         |
         |}

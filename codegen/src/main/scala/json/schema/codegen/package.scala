@@ -45,10 +45,12 @@ package object codegen {
   case class LangTypeProperty(name: String, required: Boolean, isa: LangType)
 
 
-  implicit class ParserWrapper[N: Numeric, T: JsonSource](jsonParser: JsonSchemaParser[N]) {
-    implicit val evdoc: ===[SValidation[SchemaDocument[N]], SValidation[SchemaDocument[N]]] = Leibniz.refl
+  implicit class ParserWrapper[N: Numeric](jsonParser: JsonSchemaParser[N]) {
 
-    def parseAll(sources: Seq[T]): SValidation[List[SchemaDocument[N]]] = sources.map(source => jsonParser.parse(source)).toList.sequenceU
+    def parseAll[T: JsonSource](sources: Seq[T]): SValidation[List[SchemaDocument[N]]] = {
+      implicit val evdoc: ===[SValidation[SchemaDocument[N]], SValidation[SchemaDocument[N]]] = Leibniz.refl
+      sources.map(source => jsonParser.parse(source)).toList.sequenceU
+    }
   }
 
   trait Logging {
@@ -133,17 +135,17 @@ package object codegen {
       implicit val evdoc: ===[SValidation[SchemaDocument[N]], SValidation[SchemaDocument[N]]] = Leibniz.refl
 
       for {
-        models: List[Set[LangType]] <- schemas.map(schema => languageModel(schema).withDebug("generated object model")).sequence
+        models <- schemas.map(schema => languageModel(schema).withDebug("generated object model")).sequenceU
         modelsByPackage: Map[String, Set[LangType]] = packageModels(models.flatMap(_.toList).toSet)
         modelFiles <- modelsByPackage.map {
           case (packageName, packageModels) =>
             generateModelFiles(packageModels, packageName, codeGenTarget).withDebug("model files")
-        }.toList.sequence
+        }.toList.sequenceU
         codecFiles <- modelsByPackage.map {
           case (packageName, packageModels) =>
             generateCodecFiles(packageModels, packageName, codeGenTarget).withDebug("serializatoin files")
-        }.toList.sequence
-        predefinedCodecs: List[Path] <- generateCodecFiles(codeGenTarget).withDebug("serialization files")
+        }.toList.sequenceU
+        predefinedCodecs <- generateCodecFiles(codeGenTarget).withDebug("serialization files")
       } yield {
         val paths: List[Path] = predefinedCodecs ++ modelFiles.flatten ++ codecFiles.flatten
         info(s"generated ${paths.size} in $codeGenTarget")

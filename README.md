@@ -44,9 +44,7 @@ In project/plugins.sbt add:
 
 ```scala
 
-resolvers ++= Seq(
-  Resolver.url("vox-public-ivy", url("http://dl.bintray.com/content/voxsupplychain/ivy-public"))(Resolver.ivyStylePatterns)
-)
+resolvers += "releases" at "http://nexus.tundra.com/repository/maven-releases/"
 
 addSbtPlugin("com.voxsupplychain" %% "json-schema-codegen-sbt" % "0.3.0")
 
