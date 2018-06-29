@@ -223,4 +223,29 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |case class B(next:reference.definitions.C)
       |""".stripMargin.trim)
   }
+
+  it should "generate array of types" in {
+    gen("""
+      |{
+      |  "id": "http://some/StringArray",
+      |  "type": "array",
+      |  "items": {
+      |     "type": "string"
+      |  }
+      |}
+      |""".stripMargin.trim) shouldBe \/-("""
+      |type StringArray = List[String]
+      |""".stripMargin.trim)
+  }
+
+  it should "generate simple types" in {
+    gen("""
+      |{
+      |  "id": "http://some/MyString",
+      |  "type": "string"
+      |}
+      |""".stripMargin.trim) shouldBe \/-("""
+      |type MyString = String
+      |""".stripMargin.trim)
+  }
 }

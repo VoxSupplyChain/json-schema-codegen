@@ -46,7 +46,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |{"type":"array",
         |"items":{"type":"string"}, "uniqueItems":true
         |}
-      """.stripMargin) shouldBe \/-(ArrayType("", unique = true, PredefType("", "string")))
+      """.stripMargin) shouldBe \/-(ArrayType("", "", unique = true, PredefType("", "string")))
   }
 
   it should "convert array of items to Scala List" in {
@@ -55,7 +55,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |{"type":"array",
         |"items":{"type":"string"}
         |}
-      """.stripMargin) shouldBe \/-(ArrayType("", unique = false, PredefType("", "string")))
+      """.stripMargin) shouldBe \/-(ArrayType("", "", unique = false, PredefType("", "string")))
   }
 
   it should "use id in camel case for class name" in {
@@ -129,7 +129,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |}
       """.stripMargin).map(_.asInstanceOf[ClassType].properties) shouldBe \/-(
       List(
-        LangTypeProperty("a", required = true, PredefType("", "string"))
+        LangTypeProperty("a", required = true, AliasType("product.definitions", "Typea", PredefType("", "string")))
       )
     )
   }

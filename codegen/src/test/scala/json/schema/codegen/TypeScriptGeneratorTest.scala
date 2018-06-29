@@ -124,7 +124,7 @@ class TypeScriptGeneratorTest extends FlatSpec with Matchers with TypeScriptGene
         |"type":"string",
         |"enum":["a 1","b"]
         |}
-      """.stripMargin) shouldBe \/-("")
+      """.stripMargin) shouldBe \/-("type Product = \"a 1\" | \"b\"")
     gen(
       """
         |{
@@ -140,9 +140,11 @@ class TypeScriptGeneratorTest extends FlatSpec with Matchers with TypeScriptGene
         |}
         |}
       """.stripMargin) shouldBe \/-(
-      """interface Product {
-        |a?: string;
-        |b?: number;
+      """type B = 1.0 | 2.0
+        |type A = "a 1" | "b"
+        |interface Product {
+        |a?: A;
+        |b?: B;
         |}""".stripMargin.trim)
   }
 
@@ -172,6 +174,37 @@ class TypeScriptGeneratorTest extends FlatSpec with Matchers with TypeScriptGene
           |
           |}
           | """.stripMargin.trim)
+  }
+
+  it should "generate array of types" in {
+    gen(
+      """
+        |{
+        |  "id": "http://some/StringArray",
+        |  "type": "array",
+        |  "items": {
+        |     "type": "string"
+        |  }
+        |}
+        |""".stripMargin.trim) shouldBe
+      \/-(
+        """
+          |type StringArray = string[]
+          |""".stripMargin.trim)
+  }
+
+  it should "generate simple types" in {
+    gen(
+      """
+        |{
+        |  "id": "http://some/MyString",
+        |  "type": "string"
+        |}
+        |""".stripMargin.trim) shouldBe
+      \/-(
+        """
+          |type MyString = string
+          |""".stripMargin.trim)
   }
 
 }

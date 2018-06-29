@@ -76,9 +76,26 @@ trait TypeScriptGenerator extends CodeGenerator with TypeScriptNaming {
         }
       val members = "\n" + (properties ++ extra.toList).mkString("\n") + "\n"
       s"""interface ${t.identifier} {$members}""".stripMargin
-
+    case a: ArrayType =>
+      val typeEq = genPropertyType(a)
+      s"""type ${a.identifier} = $typeEq""".stripMargin
+    case t: AliasType =>
+      val typeEq = genPropertyType(t.nested)
+      s"""type ${t.identifier} = $typeEq""".stripMargin
+    case t: EnumType =>
+      val values = t.enums.map {
+        case v: String => "\"" + v + "\""
+        case v: Int =>
+          v.toInt.toString
+        case v: Long =>
+          v.toLong.toString
+        case v: Double =>
+          v.toString
+        case _ => ""
+      }.mkString(" | ")
+      val typeEq = if (values.isEmpty) genPropertyType(t.nested) else values
+      s"""type ${t.identifier} = $typeEq""".stripMargin
     case _ => ""
-
   }
 
   def memberName(s: String): Option[String] = if (isIdentifier(s)) escapePropertyReserved(s) else None

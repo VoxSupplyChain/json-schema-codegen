@@ -67,3 +67,20 @@ Code is generated during the compile phase.
 
  * JSON without JSON-schema is a "crazy mess" - GOTO 2016 • What I Wish I Had Known Before Scaling Uber to 1000 Services • Matt Ranney https://youtu.be/kb-m2fasdDY?t=870
 
+
+## History
+
+ * 0.5.0 
+ 
+    Added support for type aliases in Typescript and Scala generators. This makes type declarations even more expressive. 
+    For example: 
+    
+          {
+            "id": "http://some/currencyCode",
+            "type": "string"
+          }
+          // will generate 
+          type CurrencyCode = String
+
+    Support for root types. The above declaration would work in "definitions" and as an independent JSON-schema.
+     

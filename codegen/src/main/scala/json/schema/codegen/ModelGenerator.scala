@@ -2,7 +2,7 @@ package json.schema.codegen
 
 import argonaut.Json
 import json.schema.parser.{SchemaDocument, SimpleType}
-
+import scalaz.-\/
 import scalaz.std.list._
 import scalaz.syntax.either._
 import scalaz.syntax.std.boolean._
@@ -59,20 +59,24 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
   def array(schema: Schema, name: Option[String]): SValidation[LangType] = for {
     array <- schema.array.toRightDisjunction(s"not array type: ${schema.types}")
     arrayschema <- array.items.value.headOption.toRightDisjunction(s"items ${name.getOrElse("")} is empty: ${schema.types}")
-    genClassName: Option[String] = name.map(_ + "0")
-    nested <- any(arrayschema, genClassName)
-  } yield ArrayType(packageName(schema.id.getOrElse(schema.scope)), array.uniqueItems, nested)
+    typeName <- className(schema, name)
+    nestedName: Option[String] = name.map(_ + "0")
+    nested <- any(arrayschema, nestedName)
+  } yield ArrayType(packageName(schema.id.getOrElse(schema.scope)), typeName, array.uniqueItems, nested)
 
-  def simple(schema: Schema): SValidation[LangType] = {
-    schema.types.headOption.flatMap(json2predef.get).toRightDisjunction("Type is not simple") map {
-      simpleType =>
-        // if there is a format, try to find type that corresponds to the format
-        val formatType = schema.format.flatMap(format => format2predef.get((simpleType, format.toLowerCase))).getOrElse(simpleType)
-
-        definedSchemas.put(schema, formatType)
-        formatType
+  def simple(schema: Schema, name: Option[String]): SValidation[LangType] = if (schema.enums.isEmpty)
+    for {
+      simpleType <- schema.types.headOption.flatMap(json2predef.get).toRightDisjunction("Type is not simple")
+      typeName <- className(schema, name)
+    } yield {
+      // if there is a format, try to find type that corresponds to the format
+      val formatType = schema.format.flatMap(format => format2predef.get((simpleType, format.toLowerCase))).getOrElse(simpleType)
+      val finalType = if (typeName.isEmpty || schema.id.isEmpty) formatType else AliasType(packageName(schema.id.getOrElse(schema.scope)), typeName, formatType)
+      definedSchemas.put(schema, finalType)
+      finalType
     }
-  }
+  else
+    -\/("Simple but enum")
 
   def enum(schema: Schema, name: Option[String]): SValidation[LangType] = {
 
@@ -80,7 +84,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
       t <- schema.types.headOption.toRightDisjunction("Type is required")
       className <- className(schema, name)
       enums <- schema.enums.isEmpty ? "Enum not defined".left[Set[Json]] | schema.enums.right[String]
-      enumNestedSchema = schema.copy(enums = Set.empty)
+      enumNestedSchema = schema.copy(enums = Set.empty, id = None)
       nestedType <- any(enumNestedSchema, (className + "Value").some)
     } yield {
 
@@ -103,7 +107,7 @@ abstract class ModelGenerator[N: Numeric](json2predef: Map[SimpleType.SimpleType
     if (schema.types.size != 1)
       ref(schema) orElse s"One type is required in: $schema".left
     else
-      enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema)
+      enum(schema, name) orElse array(schema, name) orElse `object`(schema, name) orElse simple(schema, name) orElse -\/(s"Unclear definition: ${name.orEmpty}")
   }
 
 }

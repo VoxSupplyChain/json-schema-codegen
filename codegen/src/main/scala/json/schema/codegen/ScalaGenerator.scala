@@ -60,7 +60,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
       packageName =>
 
         val referencedTypes = ts.flatMap(_.referenced).filter(t => !t.scope.isEmpty && t.scope != scope)
-        val referencedCodes = referencedTypes.isEmpty ? "" | referencedTypes.map(codecPackage).mkString(" extends ", " with ", "")
+        val referencedCodes = referencedTypes.isEmpty ? "" | referencedTypes.filterNot(_.isInstanceOf[AliasType]).map(codecPackage).mkString(" extends ", " with ", "")
 
         val codecs = ts.map {
           case t: ClassType => genCodecClass(t)
@@ -98,11 +98,15 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         val modelDecl = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
         if (modelDecl.isEmpty)
           "".right
-        else
-          modelDecl.mkString(
+        else {
+          // declare types in types object because they can not be in package object
+          val types = modelDecl.filter(_.startsWith("type ")).mkString("object types {\n", "\n", "\n}\n")
+          val classes = modelDecl.filterNot(_.startsWith("type ")).mkString(
             packageDecl,
-            "\n\n", ""
-          ).right
+            "\n\n", "\n\n"
+          )
+          (classes + types).right
+        }
 
     }
   }
@@ -209,7 +213,12 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
       """.stripMargin
 
 
-  private def withPackageReference(t: LangType)(name: => String): String = if (t.scope.isEmpty) name else t.scope + "." + name
+  private def withPackageReference(t: LangType)(name: => String): String =
+    if (t.scope.isEmpty) name else t match {
+      case lt: AliasType => lt.scope + ".types." + name
+      case lt => lt.scope + "." + name
+    }
+
 
   def genPropertyType(t: LangType): String = {
     t match {
@@ -267,7 +276,12 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         case _ => ""
       }.filter(_ != "").mkString("\n")
       s"""object ${t.identifier} extends Enumeration { $valueDeclarations }""".stripMargin
-
+    case t: ArrayType =>
+      val typeEq = genPropertyType(t)
+      s"""type ${t.identifier} = $typeEq""".stripMargin
+    case t: AliasType =>
+      val typeEq = genPropertyType(t.nested)
+      s"""type ${t.identifier} = $typeEq""".stripMargin
     case _ => ""
 
   }

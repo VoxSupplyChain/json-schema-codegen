@@ -29,8 +29,11 @@ package object codegen {
     override val referenced: Set[LangType] = Set.empty
   }
 
-  sealed case class ArrayType(scope: String, unique: Boolean, nested: LangType) extends LangType {
-    override val identifier = nested.identifier
+  sealed case class AliasType(scope: String, identifier: String, nested: LangType) extends LangType {
+    override lazy val referenced: Set[LangType] = nested.referenced + nested
+  }
+
+  sealed case class ArrayType(scope: String, identifier: String, unique: Boolean, nested: LangType) extends LangType {
     override lazy val referenced: Set[LangType] = nested.referenced + nested
   }
 
@@ -157,28 +160,31 @@ package object codegen {
     def languageModel[N: Numeric](schema: SchemaDocument[N]): SValidation[Set[LangType]]
 
     /**
-     * generate model files.
-     * @param ts model graph.
-     * @param scope target scope where to generate model code.
-     * @param outputDir
-     * @return generated list of files.
-     */
+      * generate model files.
+      *
+      * @param ts    model graph.
+      * @param scope target scope where to generate model code.
+      * @param outputDir
+      * @return generated list of files.
+      */
     def generateModelFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]]
 
     /**
-     * generate codecs for predefined types.
-     * @param outputDir
-     * @return generated list of files.
-     */
+      * generate codecs for predefined types.
+      *
+      * @param outputDir
+      * @return generated list of files.
+      */
     def generateCodecFiles(outputDir: Path): SValidation[List[Path]]
 
     /**
-     * generate codecs for the above models.
-     * @param ts model graph.
-     * @param scope target scope where to generate model code.
-     * @param outputDir
-     * @return generated list of files.
-     */
+      * generate codecs for the above models.
+      *
+      * @param ts    model graph.
+      * @param scope target scope where to generate model code.
+      * @param outputDir
+      * @return generated list of files.
+      */
     def generateCodecFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]]
 
   }

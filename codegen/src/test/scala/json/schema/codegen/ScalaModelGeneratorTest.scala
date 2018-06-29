@@ -46,7 +46,7 @@ class ScalaModelGeneratorTest extends FlatSpec with Matchers {
         |{"type":"array",
         |"items":{"type":"string"}, "uniqueItems":true
         |}
-      """.stripMargin) shouldBe \/-(ArrayType("", unique = true, PredefType("", "String")))
+      """.stripMargin) shouldBe \/-(ArrayType("", "", unique = true, PredefType("", "String")))
   }
 
   it should "convert array of items to Scala List" in {
@@ -55,7 +55,7 @@ class ScalaModelGeneratorTest extends FlatSpec with Matchers {
         |{"type":"array",
         |"items":{"type":"string"}
         |}
-      """.stripMargin) shouldBe \/-(ArrayType("", unique = false, PredefType("", "String")))
+      """.stripMargin) shouldBe \/-(ArrayType("", "", unique = false, PredefType("", "String")))
   }
 
   it should "use id in camel case for class name" in {
@@ -112,7 +112,7 @@ class ScalaModelGeneratorTest extends FlatSpec with Matchers {
         |}
       """.stripMargin).map(_.asInstanceOf[ClassType].properties) shouldBe \/-(
       List(
-        LangTypeProperty("a", required = true, PredefType("", "String"))
+        LangTypeProperty("a", required = true, AliasType("product.definitions", "Typea", PredefType("", "String")))
       )
     )
   }
