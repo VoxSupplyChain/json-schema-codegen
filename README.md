@@ -83,4 +83,5 @@ Code is generated during the compile phase.
           type CurrencyCode = String
 
     Support for root types. The above declaration would work in "definitions" and as an independent JSON-schema.
-     
+    
+    Requires sbt version 1.x.      

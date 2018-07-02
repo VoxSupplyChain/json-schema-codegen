@@ -4,7 +4,7 @@ enablePlugins(json.schema.codegen.Plugin)
 
 libraryDependencies ++= Seq(
   "io.argonaut" %% "argonaut" % "6.2.1",
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 )
 
 typeScriptDirectory in Compile := Some(target.value / "typescript")
