@@ -133,25 +133,26 @@ package object codegen {
     protected implicit val ev: ===[SValidation[List[Path]], SValidation[List[Path]]] = Leibniz.refl
     implicit val evset: ===[SValidation[Set[LangType]], SValidation[Set[LangType]]] = Leibniz.refl
 
-    def apply[N: Numeric](schemas: List[SchemaDocument[N]])(codeGenTarget: Path): SValidation[List[Path]] = {
+    def apply[N: Numeric](schemas: List[SchemaDocument[N]])(packageFilter: String => Boolean, codeGenTarget: Path): SValidation[List[Path]] = {
 
       implicit val evdoc: ===[SValidation[SchemaDocument[N]], SValidation[SchemaDocument[N]]] = Leibniz.refl
 
       for {
         models <- schemas.map(schema => languageModel(schema).withDebug("generated object model")).sequenceU
         modelsByPackage: Map[String, Set[LangType]] = packageModels(models.flatMap(_.toList).toSet)
-        modelFiles <- modelsByPackage.map {
+        modelsToGenerate = modelsByPackage.filter(pkg => packageFilter(pkg._1))
+        modelFiles <- modelsToGenerate.map {
           case (packageName, packageModels) =>
             generateModelFiles(packageModels, packageName, codeGenTarget).withDebug("model files")
         }.toList.sequenceU
-        codecFiles <- modelsByPackage.map {
+        codecFiles <- modelsToGenerate.map {
           case (packageName, packageModels) =>
             generateCodecFiles(packageModels, packageName, codeGenTarget).withDebug("serializatoin files")
         }.toList.sequenceU
         predefinedCodecs <- generateCodecFiles(codeGenTarget).withDebug("serialization files")
       } yield {
         val paths: List[Path] = predefinedCodecs ++ modelFiles.flatten ++ codecFiles.flatten
-        info(s"generated ${paths.size} in $codeGenTarget")
+        info(s"generated ${paths.size} $generatedLanguage files in: $codeGenTarget")
         paths.withDebug("generated files")
       }
 
@@ -187,6 +188,7 @@ package object codegen {
       */
     def generateCodecFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]]
 
+    def generatedLanguage: String
   }
 
 }

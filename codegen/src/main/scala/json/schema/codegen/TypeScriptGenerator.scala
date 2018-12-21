@@ -12,6 +12,8 @@ trait TypeScriptGenerator extends CodeGenerator with TypeScriptNaming {
 
   val fileName: String = "model.ts"
 
+  override def generatedLanguage: String = "Scala"
+
   def generateModelFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]] = {
     generateFile(scope, fileName, outputDir) {
       packageName =>

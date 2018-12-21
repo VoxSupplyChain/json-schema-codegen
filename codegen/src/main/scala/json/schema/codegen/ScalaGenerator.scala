@@ -13,6 +13,9 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   val addPropName = "_additional"
 
+  override def generatedLanguage: String = "Scala"
+
+
   def generateCodecFiles(outputDir: Path): SValidation[List[Path]] = {
     val codecClassName: String = "Codecs"
     val fileName: String = codecClassName.toLowerCase + ".scala"

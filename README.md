@@ -70,6 +70,19 @@ Code is generated during the compile phase.
 
 ## History
 
+ * 0.6.0
+ 
+    Added a configuration to allow for ignoring packages from generation.
+    This allows us to share schemas between shared code bases.
+    For example:
+    
+    filter in scalaCodegen in Compile := {
+        pkg: String =>
+            !pkg.startsWith("vox.buy.model") &&
+            !pkg.startsWith("segment.model") 
+      }
+
+    
  * 0.5.0 
  
     Added support for type aliases in Typescript and Scala generators. This makes type declarations even more expressive. 

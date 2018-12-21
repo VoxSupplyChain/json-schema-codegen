@@ -29,7 +29,7 @@ abstract class GeneratorCommand(codegens: List[CodeGenerator]) {
       else Seq(source)
 
       schemas <- parser.parseAll(sources)
-      results <- codegens.map(gen => gen(schemas)(genRoot)).sequenceU
+      results <- codegens.map(gen => gen(schemas)(_ => true, genRoot)).sequenceU
     } yield results
 
     result.fold({ e =>
