@@ -46,7 +46,7 @@ In project/plugins.sbt add:
 
 resolvers += "releases" at "http://nexus.tundra.com/repository/maven-releases/"
 
-addSbtPlugin("com.voxsupplychain" %% "json-schema-codegen-sbt" % "0.3.0")
+addSbtPlugin("com.voxsupplychain" %% "json-schema-codegen-sbt" % "0.6.0")
 
 ```
 
