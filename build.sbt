@@ -11,12 +11,12 @@ val commonSettings = Seq(
   publishTo := {
     val nexus = "https://my.artifact.repo.net/"
     if (isSnapshot.value)
-      Some("snapshots"  at "http://nexus.tundra.com/repository/maven-snapshots/")
+      Some("snapshots"  at "https://nexus.tundra-shared.com/repository/maven-snapshots/")
     else
-      Some("releases" at "http://nexus.tundra.com/repository/maven-releases/") 
+      Some("releases" at "https://nexus.tundra-shared.com/repository/maven-releases/")
   },
 
-  resolvers += "releases" at "http://nexus.tundra.com/repository/maven-releases/",
+  resolvers += "releases" at "https://nexus.tundra-shared.com/repository/maven-releases/",
 
   credentials += Credentials(Path.userHome / ".ivy2" / ".credentials"),
 
