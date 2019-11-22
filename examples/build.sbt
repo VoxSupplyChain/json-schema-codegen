@@ -3,7 +3,7 @@ name := "json-schema-codegen-examples"
 enablePlugins(json.schema.codegen.Plugin)
 
 libraryDependencies ++= Seq(
-  "io.argonaut" %% "argonaut" % "6.2.1",
+  "io.argonaut" %% "argonaut" % "6.2.2",
   "org.scalatest" %% "scalatest" % "3.0.0" % "test"
 )
 

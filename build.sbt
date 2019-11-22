@@ -9,7 +9,6 @@ val commonSettings = Seq(
   publishMavenStyle := true,
 
   publishTo := {
-    val nexus = "https://my.artifact.repo.net/"
     if (isSnapshot.value)
       Some("snapshots"  at "https://nexus.tundra-shared.com/repository/maven-snapshots/")
     else
