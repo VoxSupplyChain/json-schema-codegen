@@ -2,8 +2,7 @@ package json.schema.codegen
 
 import json.schema.parser.JsonSchemaParser
 import org.scalatest.{FlatSpec, Matchers}
-
-import scalaz.{\/-, Success}
+import scalaz.\/-
 
 class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with ConsoleLogging {
 

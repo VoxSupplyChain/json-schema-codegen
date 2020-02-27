@@ -120,12 +120,11 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
     c.additionalNested match {
       case None =>
-        s"""implicit def ${className}Codec: CodecJson[$className]=casecodec${c.properties.length}($className.apply, $className.unapply)($propNames)"""
+        s"""implicit def ${className}Codec: CodecJson[$className] = CodecJson.derive[$className]"""
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
-        val addPropNames = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         s"""
-           private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
+           private def ${className}SimpleCodec: CodecJson[$className] = CodecJson.derive[$className]
 
            implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
               v =>
