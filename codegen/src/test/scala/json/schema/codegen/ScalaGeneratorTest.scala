@@ -1,9 +1,10 @@
 package json.schema.codegen
 
+import java.nio.file.Paths
+
 import json.schema.parser.JsonSchemaParser
 import org.scalatest.{FlatSpec, Matchers}
-
-import scalaz.{\/-, Success}
+import scalaz.{Success, \/-}
 
 class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with ConsoleLogging {
 
@@ -247,5 +248,11 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
       |""".stripMargin.trim) shouldBe \/-("""
       |type MyString = String
       |""".stripMargin.trim)
+  }
+
+  it should "format code" in {
+    val g = new ScalaGenerator with ConsoleLogging
+    val formatted = g.format(Paths.get("test.scala"), "object A  {  }")
+    formatted shouldBe "object A {}\n"
   }
 }
