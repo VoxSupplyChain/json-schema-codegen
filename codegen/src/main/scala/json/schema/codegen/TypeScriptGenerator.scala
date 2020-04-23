@@ -18,9 +18,9 @@ trait TypeScriptGenerator extends CodeGenerator with TypeScriptNaming {
     generateFile(scope, fileName, outputDir) {
       packageName =>
 
-        val referencesBlock = ts.flatMap(referenceString).mkString("\n")
+        // val referencesBlock = ts.flatMap(referenceString).mkString("\n")
 
-        val packageDecl = packageName.map(p => s"$referencesBlock\n\ndeclare module $p {\n\n").getOrElse("")
+        val packageDecl = packageName.map(p => s"\n\ndeclare module $p {\n\n").getOrElse("")
         val modelDecl = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
         if (modelDecl.isEmpty)
           "".right
@@ -32,17 +32,17 @@ trait TypeScriptGenerator extends CodeGenerator with TypeScriptNaming {
     }
   }
 
-  private def referenceString(lt: LangType): Set[String] = {
-    val thisRef = withPackagePath(lt)(fileName)
-    val thisRefPath = Option(new File(thisRef).getParentFile).map(_.toPath).getOrElse(new File("").toPath)
+  // private def referenceString(lt: LangType): Set[String] = {
+  //   val thisRef = withPackagePath(lt)(fileName)
+  //   val thisRefPath = Option(new File(thisRef).getParentFile).map(_.toPath).getOrElse(new File("").toPath)
 
-    lt.referenced.filter(_.scope.nonEmpty).map(t => withPackagePath(t)(fileName)).filter(_ != thisRef).map {
-      ref =>
-        val othersRef = new File(ref).toPath
-        val relRef = thisRefPath.relativize(othersRef)
-        s"""/// <reference path="$relRef" />"""
-    }
-  }
+  //   lt.referenced.filter(_.scope.nonEmpty).map(t => withPackagePath(t)(fileName)).filter(_ != thisRef).map {
+  //     ref =>
+  //       val othersRef = new File(ref).toPath
+  //       val relRef = thisRefPath.relativize(othersRef)
+  //       s"""/// <reference path="$relRef" />"""
+  //   }
+  // }
 
   private def withPackagePath(t: LangType)(name: => String): String = if (t.scope.isEmpty) name else t.scope.replace(".", "/") + "/" + name
 
