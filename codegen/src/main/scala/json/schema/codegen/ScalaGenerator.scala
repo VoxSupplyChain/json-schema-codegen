@@ -26,7 +26,9 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           genCodecURI(),
           genCodecInetAddress("4"),
           genCodecInetAddress("6"),
-          genCodecDate()
+          genCodecDate(),
+          genCodecDateTime(),
+          genCodecTime()
         ).filter(!_.trim.isEmpty).mkString("\n")
 
         if (codecs.isEmpty)
@@ -179,23 +181,62 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         })
     """.stripMargin
 
+  def genCodecDateTime(): String =
+    s"""
+    implicit def DateTimeCodec: CodecJson[java.time.OffsetDateTime] =
+      CodecJson.derived(
+        EncodeJson(v => jString(v.toString)),
+        StringDecodeJson.flatMap { dateTimeString =>
+          DecodeJson(
+            j => {
+              try {
+                DecodeResult.ok(java.time.OffsetDateTime.parse(dateTimeString))
+              } catch {
+                case e: NoSuchElementException => DecodeResult.fail("OffsetDateTime", j.history)
+              }
+            }
+          )
+        }
+      )
+    """.stripMargin
+
   def genCodecDate(): String =
     s"""
-      private def isoDate = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-      implicit def DateCodec: CodecJson[java.util.Date] = CodecJson.derived(
-        EncodeJson(v => jString(isoDate.format(v))), StringDecodeJson.flatMap {
-          time =>
-            DecodeJson(
-              j => {
-               try {
-                 DecodeResult.ok(isoDate.parse(time))
-               } catch {
-                 case e: NoSuchElementException => DecodeResult.fail("Inet6Address", j.history)
-               }
-             }
-            )
-        })
-    """.stripMargin
+    implicit def DateCodec: CodecJson[java.time.LocalDate] =
+      CodecJson.derived(
+        EncodeJson(v => jString(v.toString)),
+        StringDecodeJson.flatMap { dateString =>
+          DecodeJson(
+            j => {
+              try {
+                DecodeResult.ok(java.time.LocalDate.parse(dateString))
+              } catch {
+                case e: NoSuchElementException => DecodeResult.fail("LocalDate", j.history)
+              }
+            }
+          )
+        }
+      )
+      """.stripMargin
+
+  def genCodecTime(): String =
+    s"""
+    implicit def TimeCodec: CodecJson[java.time.OffsetTime] =
+      CodecJson.derived(
+        EncodeJson(v => jString(v.toString)),
+        StringDecodeJson.flatMap { timeString =>
+          DecodeJson(
+            j => {
+              try {
+                DecodeResult.ok(java.time.OffsetTime.parse(timeString))
+              } catch {
+                case e: NoSuchElementException => DecodeResult.fail("OffsetTime", j.history)
+              }
+            }
+          )
+        }
+      )
+      """.stripMargin
 
   def genCodecInetAddress(v: String): String =
     s"""

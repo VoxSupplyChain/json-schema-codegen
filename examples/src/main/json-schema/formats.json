@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/draft-04/schema#",
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
   "properties": {
     "uri": {
@@ -17,9 +17,17 @@
     "date-time": {
       "type": "string",
       "format": "date-time"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "time": {
+      "type": "string",
+      "format": "time"
     }
   },
   "required": [
-    "uri", "ipv4", "ipv6", "date-time"
+    "uri", "ipv4", "ipv6", "date-time", "date", "time"
   ]
 }

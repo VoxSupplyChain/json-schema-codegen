@@ -13,7 +13,9 @@ object ScalaModelGenerator {
 
   val format2scala: Map[(PredefType, String), PredefType] = Map(
     (PredefType(preDefScope, "String"), "uri") -> PredefType("java.net", "URI"),
-    (PredefType(preDefScope, "String"), "date-time") -> PredefType("java.util", "Date"),
+    (PredefType(preDefScope, "String"), "date") -> PredefType("java.time", "LocalDate"),
+    (PredefType(preDefScope, "String"), "date-time") -> PredefType("java.time", "OffsetDateTime"),
+    (PredefType(preDefScope, "String"), "time") -> PredefType("java.time", "OffsetTime"),
     (PredefType(preDefScope, "String"), "ipv6") -> PredefType("java.net", "Inet6Address"),
     (PredefType(preDefScope, "String"), "ipv4") -> PredefType("java.net", "Inet4Address"),
     (PredefType(preDefScope, "String"), "email") -> PredefType(preDefScope, "String"),
