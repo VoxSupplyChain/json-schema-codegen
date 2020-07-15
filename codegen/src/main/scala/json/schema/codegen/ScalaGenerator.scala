@@ -38,7 +38,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           s"""
           $packageDecl
 
-          import argonaut._, Argonaut._
+          import argonaut._, Argonaut._, ArgonautShapeless._
 
           trait $codecClassName {
             $codecs
@@ -80,7 +80,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           s"""
               $packageDecl
 
-              import argonaut._, Argonaut._
+              import argonaut._, Argonaut._, ArgonautShapeless._
 
               trait $codecClassName  $referencedCodes {
               $codecs
@@ -122,12 +122,12 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
     c.additionalNested match {
       case None =>
-        s"""implicit def ${className}Codec: CodecJson[$className]=casecodec${c.properties.length}($className.apply, $className.unapply)($propNames)"""
+        s"""implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])"""
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
         val addPropNames = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         s"""
-           private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
+           private def ${className}SimpleCodec: CodecJson[$className] = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])
 
            implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
               v =>
