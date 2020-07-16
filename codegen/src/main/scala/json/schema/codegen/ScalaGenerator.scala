@@ -130,7 +130,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         s"""
            private def ${className}SimpleCodec = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])
 
-           implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
+           implicit def ${className}Codec = CodecJson.derived(EncodeJson {
               v =>
                 val j = ${className}SimpleCodec.encode(v)
                 val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
