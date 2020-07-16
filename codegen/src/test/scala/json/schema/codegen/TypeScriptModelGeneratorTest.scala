@@ -7,33 +7,28 @@ import scalaz.{\/-, Success}
 
 class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
 
-
-  def parse(s: String): SValidation[LangType] = JsonSchemaParser.parse(s).flatMap(TypeScriptModelGenerator(_)).map(_.head)
+  def parse(s: String): SValidation[LangType] =
+    JsonSchemaParser.parse(s).flatMap(TypeScriptModelGenerator(_)).map(_.head)
 
   def parseAll(s: String): SValidation[Set[LangType]] = JsonSchemaParser.parse(s).flatMap(TypeScriptModelGenerator(_))
 
   TypeScriptModelGenerator.getClass.getName should "convert simple types to typescript types" in {
-    parse(
-      """
+    parse("""
         |{"type":"integer"}
       """.stripMargin).map(_.identifier) shouldBe \/-("number")
-    parse(
-      """
+    parse("""
         |{"type":"boolean"}
       """.stripMargin).map(_.identifier) shouldBe \/-("boolean")
-    parse(
-      """
+    parse("""
         |{"type":"number"}
       """.stripMargin).map(_.identifier) shouldBe \/-("number")
-    parse(
-      """
+    parse("""
         |{"type":"string"}
       """.stripMargin).map(_.identifier) shouldBe \/-("string")
   }
 
   it should "convert simple types with format to string types" in {
-    parse(
-      """
+    parse("""
         |{"type":"string",
         |"format":"uri"
         |}
@@ -41,8 +36,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "convert array of unique items to Scala Set" in {
-    parse(
-      """
+    parse("""
         |{"type":"array",
         |"items":{"type":"string"}, "uniqueItems":true
         |}
@@ -50,8 +44,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "convert array of items to Scala List" in {
-    parse(
-      """
+    parse("""
         |{"type":"array",
         |"items":{"type":"string"}
         |}
@@ -59,16 +52,14 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "use id in camel case for class name" in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "http://some/product",
         |"type":"object"
         |}
       """.stripMargin) shouldBe \/-(ClassType("", "Product", Nil, None))
 
-    parse(
-      """
+    parse("""
         |{
         | "id": "http://some/path#/product",
         |"type":"object"
@@ -77,8 +68,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "create type with members from properties" in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "http://some/product",
         |"type":"object",
@@ -97,8 +87,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "properties are not converted to camel case" in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "http://some/product",
         |"type":"object",
@@ -114,8 +103,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "create type using definitions" in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "product",
         |"type":"object",
@@ -135,8 +123,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "create type with name using explicit id " in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "product",
         |"type":"object",
@@ -156,14 +143,22 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |}
       """.stripMargin).map(_.asInstanceOf[ClassType].properties) shouldBe \/-(
       List(
-        LangTypeProperty("a", required = true, ClassType("product.definitions", "Typea", List(LangTypeProperty("b", required = false, PredefType("", "string"))), None))
+        LangTypeProperty(
+          "a",
+          required = true,
+          ClassType(
+            "product.definitions",
+            "Typea",
+            List(LangTypeProperty("b", required = false, PredefType("", "string"))),
+            None
+          )
+        )
       )
     )
   }
 
   it should "create type with field name as type name, when id is not specified" in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "product",
         |"type":"object",
@@ -182,14 +177,22 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |}
       """.stripMargin).map(_.asInstanceOf[ClassType].properties) shouldBe \/-(
       List(
-        LangTypeProperty("a", required = true, ClassType("product.definitions", "Typea", List(LangTypeProperty("nested", required = false, PredefType("", "string"))), None))
+        LangTypeProperty(
+          "a",
+          required = true,
+          ClassType(
+            "product.definitions",
+            "Typea",
+            List(LangTypeProperty("nested", required = false, PredefType("", "string"))),
+            None
+          )
+        )
       )
     )
   }
 
   it should "create type reusing same sub type" in {
-    parse(
-      """
+    parse("""
         |{
         |"id": "product",
         |"type":"object",
@@ -209,13 +212,30 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |}
       """.stripMargin).map(_.asInstanceOf[ClassType].properties) shouldBe \/-(
       List(
-        LangTypeProperty("a", required = true, ClassType("product.definitions", "Typea", List(LangTypeProperty("nested", required = false, PredefType("", "string"))), None)),
-        LangTypeProperty("b", required = true, ClassType("product.definitions", "Typea", List(LangTypeProperty("nested", required = false, PredefType("", "string"))), None))
+        LangTypeProperty(
+          "a",
+          required = true,
+          ClassType(
+            "product.definitions",
+            "Typea",
+            List(LangTypeProperty("nested", required = false, PredefType("", "string"))),
+            None
+          )
+        ),
+        LangTypeProperty(
+          "b",
+          required = true,
+          ClassType(
+            "product.definitions",
+            "Typea",
+            List(LangTypeProperty("nested", required = false, PredefType("", "string"))),
+            None
+          )
+        )
       )
     )
 
-    parse(
-      """
+    parse("""
         |{
         | "id": "product",
         |"type":"object",
@@ -236,15 +256,32 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
         |}
       """.stripMargin).map(_.asInstanceOf[ClassType].properties) shouldBe \/-(
       List(
-        LangTypeProperty("a", required = true, ClassType("product.definitions", "Typea", List(LangTypeProperty("b", required = false, PredefType("", "string"))), None)),
-        LangTypeProperty("b", required = true, ClassType("product.definitions", "Typea", List(LangTypeProperty("b", required = false, PredefType("", "string"))), None))
+        LangTypeProperty(
+          "a",
+          required = true,
+          ClassType(
+            "product.definitions",
+            "Typea",
+            List(LangTypeProperty("b", required = false, PredefType("", "string"))),
+            None
+          )
+        ),
+        LangTypeProperty(
+          "b",
+          required = true,
+          ClassType(
+            "product.definitions",
+            "Typea",
+            List(LangTypeProperty("b", required = false, PredefType("", "string"))),
+            None
+          )
+        )
       )
     )
   }
 
   it should "type with additionalProperties has a map" in {
-    parse(
-      """
+    parse("""
         |{
         | "id": "product",
         |"type":"object",
@@ -267,8 +304,7 @@ class TypeScriptModelGeneratorTest extends FlatSpec with Matchers {
   }
 
   it should "preserve scope of referenced types" in {
-    val models: SValidation[Set[LangType]] = parseAll(
-      """
+    val models: SValidation[Set[LangType]] = parseAll("""
         |{
         |"id": "product",
         |"type":"object",

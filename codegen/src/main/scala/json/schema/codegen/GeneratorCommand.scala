@@ -19,23 +19,27 @@ abstract class GeneratorCommand(codegens: List[CodeGenerator]) {
 
   def main(args: Array[String]) {
 
-    val oargs = args.lift
+    val oargs  = args.lift
     val parser = new JsonSchemaParser[Double]
     val result = for {
-      source <- oargs(0).map(new File(_)).toRightDisjunction("json-schema is required")
+      source    <- oargs(0).map(new File(_)).toRightDisjunction("json-schema is required")
       targetDir <- oargs(1).map(new File(_)).toRightDisjunction("target folder is required")
       genRoot: Path = targetDir.toPath
-      sources = if (source.isDirectory) source.listFiles(jsonFilesFilter).toSeq
-      else Seq(source)
+      sources =
+        if (source.isDirectory) source.listFiles(jsonFilesFilter).toSeq
+        else Seq(source)
 
       schemas <- parser.parseAll(sources)
       results <- codegens.map(gen => gen(schemas)(_ => true, genRoot)).sequenceU
     } yield results
 
-    result.fold({ e =>
-      sys.error(s"Code generation failed with: $e")
-      System.exit(1)
-    }, _ => System.exit(0))
+    result.fold(
+      { e =>
+        sys.error(s"Code generation failed with: $e")
+        System.exit(1)
+      },
+      _ => System.exit(0)
+    )
 
   }
 

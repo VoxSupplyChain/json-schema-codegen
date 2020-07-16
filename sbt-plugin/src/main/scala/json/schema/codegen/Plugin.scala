@@ -10,19 +10,11 @@ import sbt.{Def, _}
 object Plugin extends sbt.AutoPlugin {
 
   object autoImport {
-    lazy val typeScriptDirectory = SettingKey[Option[File]](
-      "type-script-directory",
-      "Destination Folder for TypeScript generated code")
-    lazy val scalaCodegen = TaskKey[Seq[File]](
-      "scala-codegen",
-      "Generate Scala code from Json-Schema")
-    lazy val filter = TaskKey[String => Boolean](
-      "filter",
-      "Scala types to generate")
-    lazy val typescriptCodegen = TaskKey[Seq[File]](
-      "typescript-codegen",
-      "Generate TypeScript code from Json-Schema")
-
+    lazy val typeScriptDirectory =
+      SettingKey[Option[File]]("type-script-directory", "Destination Folder for TypeScript generated code")
+    lazy val scalaCodegen      = TaskKey[Seq[File]]("scala-codegen", "Generate Scala code from Json-Schema")
+    lazy val filter            = TaskKey[String => Boolean]("filter", "Scala types to generate")
+    lazy val typescriptCodegen = TaskKey[Seq[File]]("typescript-codegen", "Generate TypeScript code from Json-Schema")
 
     lazy val jsonGenSettings = Seq(
       // scala code gen
@@ -34,42 +26,51 @@ object Plugin extends sbt.AutoPlugin {
       watchSources in Defaults.ConfigGlobal ++= (sources in scalaCodegen).value,
       scalaCodegen := {
         val destinationDir = sourceManaged.value
-        val s = streams.value
-        val jsonFiles = (sources in scalaCodegen).value
-        val filterFn = (filter in scalaCodegen).value
-        val codegenLog = s.log("scala-codegen")
-        runGen(s, destinationDir, new ScalaGenerator with SbtLog {
-          val log = codegenLog
-        }, filterFn, jsonFiles)
+        val s              = streams.value
+        val jsonFiles      = (sources in scalaCodegen).value
+        val filterFn       = (filter in scalaCodegen).value
+        val codegenLog     = s.log("scala-codegen")
+        runGen(
+          s,
+          destinationDir,
+          new ScalaGenerator with SbtLog {
+            val log = codegenLog
+          },
+          filterFn,
+          jsonFiles
+        )
       },
       sourceGenerators += scalaCodegen.taskValue,
-
       // // typescript gen
 
       // TypeScript generation is disabled by default.
       typeScriptDirectory := None,
       filter in typescriptCodegen := { _ => true },
-
       sourceDirectory in typescriptCodegen := (sourceDirectory in typescriptCodegen).value,
       sources in typescriptCodegen := {
         ((sourceDirectory in typescriptCodegen).value ** GlobFilter("*.json")).get
       },
       typescriptCodegen := {
         val destinationDir = typeScriptDirectory.value
-        val s = streams.value
-        val jsonFiles = (sources in typescriptCodegen).value
-        val filterFn = (filter in typescriptCodegen).value
+        val s              = streams.value
+        val jsonFiles      = (sources in typescriptCodegen).value
+        val filterFn       = (filter in typescriptCodegen).value
         destinationDir.foreach(destinationDir =>
-          runGen(s, destinationDir, new TypeScriptGenerator with SbtLog {
-            val log = s.log("typescript-codegen")
-          }, filterFn, jsonFiles)
+          runGen(
+            s,
+            destinationDir,
+            new TypeScriptGenerator with SbtLog {
+              val log = s.log("typescript-codegen")
+            },
+            filterFn,
+            jsonFiles
+          )
         )
         Nil
       },
       resourceGenerators += typescriptCodegen.taskValue
     )
   }
-
 
   import autoImport._
 
@@ -83,33 +84,36 @@ object Plugin extends sbt.AutoPlugin {
     override def error(s: => String): Unit = log.error(s)
   }
 
-  private def runGen(s: TaskStreams,
-                     destinationDir: File,
-                     generator: CodeGenerator,
-                     filter: String => Boolean,
-                     jsonFiles: Seq[sbt.File]): Seq[File] = {
+  private def runGen(
+      s: TaskStreams,
+      destinationDir: File,
+      generator: CodeGenerator,
+      filter: String => Boolean,
+      jsonFiles: Seq[sbt.File]
+  ): Seq[File] = {
 
-    val cachedFun = FileFunction.cached(s.cacheDirectory / "json-schema",
+    val cachedFun = FileFunction.cached(
+      s.cacheDirectory / "json-schema",
       FilesInfo.lastModified, /* inStyle */
-      FilesInfo.exists) /* outStyle */ {
-      jsonSchemas: Set[File] =>
-        val destinationPath = destinationDir.toPath
+      FilesInfo.exists
+    ) /* outStyle */ { jsonSchemas: Set[File] =>
+      val destinationPath = destinationDir.toPath
 
-        generator.info(s"generating ${generator.generatedLanguage} code using ${jsonSchemas.size} schemas from: $destinationPath")
+      generator.info(
+        s"generating ${generator.generatedLanguage} code using ${jsonSchemas.size} schemas from: $destinationPath"
+      )
 
-        val genFiles = for {
-          schemas <- JsonSchemaParser.parseAll(jsonSchemas.toSeq)
-          result <- generator(schemas)(filter, destinationPath)
-        } yield result
+      val genFiles = for {
+        schemas <- JsonSchemaParser.parseAll(jsonSchemas.toSeq)
+        result  <- generator(schemas)(filter, destinationPath)
+      } yield result
 
-        genFiles
-          .fold(
-            e =>
-              throw new IllegalArgumentException(
-                s"Failed code generation in $jsonSchemas: $e "),
-            p => p.map(_.toFile)
-          )
-          .toSet
+      genFiles
+        .fold(
+          e => throw new IllegalArgumentException(s"Failed code generation in $jsonSchemas: $e "),
+          p => p.map(_.toFile)
+        )
+        .toSet
 
     }
 

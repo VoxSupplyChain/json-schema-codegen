@@ -10,10 +10,11 @@ import scalaz.Scalaz._
 trait Naming {
 
   implicit class StringToolsO(v: Option[String]) {
-    def noneIfEmpty: Option[String] = v match {
-      case Some(s) if s == null || s.isEmpty => none
-      case _ => v
-    }
+    def noneIfEmpty: Option[String] =
+      v match {
+        case Some(s) if s == null || s.isEmpty => none
+        case _                                 => v
+      }
   }
 
   def packageName(scope: URI): String = {
@@ -28,15 +29,17 @@ trait Naming {
   }
 
   def className(schema: SchemaDocument[_], defaultName: Option[String]): SValidation[String] =
-    schema.id.toRightDisjunction("Schema has no Id").map(className) orElse defaultName.toRightDisjunction("Default name not given").map(
-      name => escapeReserved(underscoreToCamel(identifier(name))).capitalize)
+    schema.id.toRightDisjunction("Schema has no Id").map(className) orElse defaultName
+      .toRightDisjunction("Default name not given")
+      .map(name => escapeReserved(underscoreToCamel(identifier(name))).capitalize)
 
   def identifier(scope: URI): scalaz.Validation[String, String] = {
-    val str = scope.toString
+    val str            = scope.toString
     val lastSlash: Int = str.lastIndexOf('/')
-    val lastSegment = (lastSlash >= 0) ? str.substring(lastSlash) | str
-    val noExtSegment = removeExtension(lastSegment)
-    identifier(noExtSegment.filter(c => c != '#')).some.noneIfEmpty.toSuccess(s"Unable to extract identifier from $scope")
+    val lastSegment    = (lastSlash >= 0) ? str.substring(lastSlash) | str
+    val noExtSegment   = removeExtension(lastSegment)
+    identifier(noExtSegment.filter(c => c != '#')).some.noneIfEmpty
+      .toSuccess(s"Unable to extract identifier from $scope")
   }
 
   def isIdentifier(c: Char): Boolean = c.isLetterOrDigit || c == '_'
@@ -59,17 +62,22 @@ trait Naming {
     lazy val fromURI: String = scope.getPath.some.noneIfEmpty.getOrElse("") + fragment
 
     // package from file URI , using only the file name
-    val simpleScope: String = try {
-      (scope.getScheme == "file") ? (removeExtension(new File(new URI(scope.getScheme, scope.getHost, scope.getPath, null)).getName) + fragment) | fromURI
-    } catch {
-      case NonFatal(e) => fromURI
-    }
+    val simpleScope: String =
+      try {
+        (scope.getScheme == "file") ? (removeExtension(
+          new File(new URI(scope.getScheme, scope.getHost, scope.getPath, null)).getName
+        ) + fragment) | fromURI
+      } catch {
+        case NonFatal(e) => fromURI
+      }
 
-    val dottedString = removeExtension(simpleScope).map(c => Character.isJavaIdentifierPart(c) ? c | '.').replaceAll("\\.+$", "").replaceAll("^\\.+", "")
+    val dottedString = removeExtension(simpleScope)
+      .map(c => Character.isJavaIdentifierPart(c) ? c | '.')
+      .replaceAll("\\.+$", "")
+      .replaceAll("^\\.+", "")
 
     dottedString.split('.').map(s => escapeReserved(underscoreToCamel(identifier(s))))
   }
-
 
   def escapePropertyReserved(s: String): Option[String] = if (reservedKeywords.contains(s)) none else s.some
 

@@ -15,27 +15,24 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   override def generatedLanguage: String = "Scala"
 
-
   def generateCodecFiles(outputDir: Path): SValidation[List[Path]] = {
     val codecClassName: String = "Codecs"
-    val fileName: String = codecClassName.toLowerCase + ".scala"
-    generateFile(predefinedPackageCodec, fileName, outputDir) {
-      packageName =>
+    val fileName: String       = codecClassName.toLowerCase + ".scala"
+    generateFile(predefinedPackageCodec, fileName, outputDir) { packageName =>
+      val codecs = List(
+        genCodecURI(),
+        genCodecInetAddress("4"),
+        genCodecInetAddress("6"),
+        genCodecDate(),
+        genCodecDateTime(),
+        genCodecTime()
+      ).filter(!_.trim.isEmpty).mkString("\n")
 
-        val codecs = List(
-          genCodecURI(),
-          genCodecInetAddress("4"),
-          genCodecInetAddress("6"),
-          genCodecDate(),
-          genCodecDateTime(),
-          genCodecTime()
-        ).filter(!_.trim.isEmpty).mkString("\n")
-
-        if (codecs.isEmpty)
-          "".right
-        else {
-          val packageDecl = packageName.map(p => s"package $p").getOrElse("")
-          s"""
+      if (codecs.isEmpty)
+        "".right
+      else {
+        val packageDecl = packageName.map(p => s"package $p").getOrElse("")
+        s"""
           $packageDecl
 
           import argonaut._, Argonaut._
@@ -46,38 +43,41 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
           object $codecClassName extends $codecClassName
           """.stripMargin.right
-        }
+      }
 
     }
 
   }
 
-
   def generateCodecFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]] = {
     val codecClassName: String = "Codecs"
-    val fileName: String = codecClassName + ".scala"
+    val fileName: String       = codecClassName + ".scala"
 
     val formatTypes: Set[LangType] = ScalaModelGenerator.format2scala.values.toSet
 
-    def codecPackage(t: LangType) = formatTypes.contains(t) ? (predefinedPackageCodec + "." + codecClassName) | withPackageReference(t)(codecClassName)
+    def codecPackage(t: LangType) =
+      formatTypes.contains(t) ? (predefinedPackageCodec + "." + codecClassName) | withPackageReference(t)(
+        codecClassName
+      )
 
-    generateFile(scope, fileName, outputDir) {
-      packageName =>
+    generateFile(scope, fileName, outputDir) { packageName =>
+      val referencedTypes = ts.flatMap(_.referenced).filter(t => !t.scope.isEmpty && t.scope != scope)
+      val referencedCodes = referencedTypes.isEmpty ? "" | referencedTypes
+        .filterNot(_.isInstanceOf[AliasType])
+        .map(codecPackage)
+        .mkString(" extends ", " with ", "")
 
-        val referencedTypes = ts.flatMap(_.referenced).filter(t => !t.scope.isEmpty && t.scope != scope)
-        val referencedCodes = referencedTypes.isEmpty ? "" | referencedTypes.filterNot(_.isInstanceOf[AliasType]).map(codecPackage).mkString(" extends ", " with ", "")
+      val codecs = ts.map {
+        case t: ClassType => genCodecClass(t)
+        case t: EnumType  => genCodecEnum(t)
+        case _            => ""
+      }.filter(!_.trim.isEmpty).mkString("\n")
 
-        val codecs = ts.map {
-          case t: ClassType => genCodecClass(t)
-          case t: EnumType => genCodecEnum(t)
-          case _ => ""
-        }.filter(!_.trim.isEmpty).mkString("\n")
-
-        if (codecs.isEmpty)
-          "".right
-        else {
-          val packageDecl = packageName.map(p => s"package $p").getOrElse("")
-          s"""
+      if (codecs.isEmpty)
+        "".right
+      else {
+        val packageDecl = packageName.map(p => s"package $p").getOrElse("")
+        s"""
               $packageDecl
 
               import argonaut._, Argonaut._
@@ -88,7 +88,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
               object $codecClassName extends $codecClassName
           """.stripMargin.right
-        }
+      }
 
     }
 
@@ -96,22 +96,23 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   def generateModelFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]] = {
     val fileName: String = "model.scala"
-    generateFile(scope, fileName, outputDir) {
-      packageName =>
-
-        val packageDecl = packageName.map(p => s"package $p\n\n").getOrElse("")
-        val modelDecl = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
-        if (modelDecl.isEmpty)
-          "".right
-        else {
-          // declare types in types object because they can not be in package object
-          val types = modelDecl.filter(_.startsWith("type ")).mkString("object types {\n", "\n", "\n}\n")
-          val classes = modelDecl.filterNot(_.startsWith("type ")).mkString(
+    generateFile(scope, fileName, outputDir) { packageName =>
+      val packageDecl = packageName.map(p => s"package $p\n\n").getOrElse("")
+      val modelDecl   = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
+      if (modelDecl.isEmpty)
+        "".right
+      else {
+        // declare types in types object because they can not be in package object
+        val types = modelDecl.filter(_.startsWith("type ")).mkString("object types {\n", "\n", "\n}\n")
+        val classes = modelDecl
+          .filterNot(_.startsWith("type "))
+          .mkString(
             packageDecl,
-            "\n\n", "\n\n"
+            "\n\n",
+            "\n\n"
           )
-          (classes + types).right
-        }
+        (classes + types).right
+      }
 
     }
   }
@@ -125,7 +126,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         s"""implicit def ${className}Codec: CodecJson[$className]=casecodec${c.properties.length}($className.apply, $className.unapply)($propNames)"""
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
-        val addPropNames = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
+        val addPropNames      = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         s"""
            private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
 
@@ -149,14 +150,20 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
   }
 
   def genCodecEnum(c: EnumType): String = {
-    val enumTypeName = c.identifier
-    val enumNameReference = genPropertyType(c)
+    val enumTypeName        = c.identifier
+    val enumNameReference   = genPropertyType(c)
     val nestedTypeReference = genPropertyType(c.nested)
     s"""
-       implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (nestedTypeReference == "String") "toString" else "id"}.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
+       implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (
+      nestedTypeReference == "String"
+    ) "toString"
+    else "id"}.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
          s: $nestedTypeReference =>
           try{
-            DecodeResult.ok(${if (c.nested.identifier == "String") enumTypeName + ".withName" else enumTypeName}(${if (c.nested.identifier == "String") "s" else "s.toInt"}))
+            DecodeResult.ok(${if (c.nested.identifier == "String") enumTypeName + ".withName" else enumTypeName}(${if (
+      c.nested.identifier == "String"
+    ) "s"
+    else "s.toInt"}))
           } catch {
             case e:NoSuchElementException => DecodeResult.fail("$enumTypeName", j.history)
           }
@@ -256,15 +263,15 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
       })
       """.stripMargin
 
-
   private def withPackageReference(t: LangType)(name: => String): String =
-    if (t.scope.isEmpty) name else t match {
-      case lt: AliasType => lt.scope + ".types." + name
-      case lt => lt.scope + "." + name
-    }
+    if (t.scope.isEmpty) name
+    else
+      t match {
+        case lt: AliasType => lt.scope + ".types." + name
+        case lt            => lt.scope + "." + name
+      }
 
-
-  def genPropertyType(t: LangType): String = {
+  def genPropertyType(t: LangType): String =
     t match {
       case a: ArrayType =>
         val nestedType = genPropertyType(a.nested)
@@ -272,63 +279,59 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
       case a: EnumType => withPackageReference(a)(a.identifier + ".Value")
       case a: LangType => withPackageReference(a)(a.identifier)
     }
-  }
 
   def genPropertyType(p: LangTypeProperty): String = {
     val t = genPropertyType(p.isa)
     p.required ? t | s"Option[$t]"
   }
 
-  def genTypeDeclaration(clazz: LangType): String = clazz match {
-    case t: ClassType =>
-      val properties = t.properties.map {
-        p =>
+  def genTypeDeclaration(clazz: LangType): String =
+    clazz match {
+      case t: ClassType =>
+        val properties = t.properties.map { p =>
           val propType = genPropertyType(p)
-          memberName(p.name).map {
-            member =>
-              s"$member:$propType"
+          memberName(p.name).map { member =>
+            s"$member:$propType"
           }.getOrElse("")
-      }
-      val extra =
-        t.additionalNested.map {
-          tn =>
+        }
+        val extra =
+          t.additionalNested.map { tn =>
             val propType = genPropertyType(tn)
             // nested type is option , so that the special codec works even when no props are given
             s"$addPropName:Option[Map[String, $propType]]"
-        }
-      val members = (properties ++ extra.toList).mkString(", ")
-      s"""case class ${t.identifier}($members)""".stripMargin
+          }
+        val members = (properties ++ extra.toList).mkString(", ")
+        s"""case class ${t.identifier}($members)""".stripMargin
 
-    // enum of number are not support
-    case t: EnumType if t.nested.identifier == "Double" => ""
-    case t: EnumType =>
-      val valueDeclarations = t.enums.map {
-        case v: String =>
-          memberName(v).map {
-            valueId =>
+      // enum of number are not support
+      case t: EnumType if t.nested.identifier == "Double" => ""
+      case t: EnumType =>
+        val valueDeclarations = t.enums.map {
+          case v: String =>
+            memberName(v).map { valueId =>
               s"""val $valueId = Value("$v")"""
-          }.getOrElse("")
-        case v: Int =>
-          val valueId = s"v$v"
-          s"val $valueId = Value(${v.toInt})"
-        case v: Long =>
-          val valueId = s"v$v"
-          s"val $valueId = Value(${v.toInt})"
-        case v: Double =>
-          val valueId = s"v${v.toInt}"
-          s"val $valueId = Value(${v.toInt})"
-        case _ => ""
-      }.filter(_ != "").mkString("\n")
-      s"""object ${t.identifier} extends Enumeration { $valueDeclarations }""".stripMargin
-    case t: ArrayType =>
-      val typeEq = genPropertyType(t)
-      s"""type ${t.identifier} = $typeEq""".stripMargin
-    case t: AliasType =>
-      val typeEq = genPropertyType(t.nested)
-      s"""type ${t.identifier} = $typeEq""".stripMargin
-    case _ => ""
+            }.getOrElse("")
+          case v: Int =>
+            val valueId = s"v$v"
+            s"val $valueId = Value(${v.toInt})"
+          case v: Long =>
+            val valueId = s"v$v"
+            s"val $valueId = Value(${v.toInt})"
+          case v: Double =>
+            val valueId = s"v${v.toInt}"
+            s"val $valueId = Value(${v.toInt})"
+          case _ => ""
+        }.filter(_ != "").mkString("\n")
+        s"""object ${t.identifier} extends Enumeration { $valueDeclarations }""".stripMargin
+      case t: ArrayType =>
+        val typeEq = genPropertyType(t)
+        s"""type ${t.identifier} = $typeEq""".stripMargin
+      case t: AliasType =>
+        val typeEq = genPropertyType(t.nested)
+        s"""type ${t.identifier} = $typeEq""".stripMargin
+      case _ => ""
 
-  }
+    }
 
   def memberName(s: String): Option[String] = {
     val camel: String = underscoreToCamel(identifier(s))
@@ -338,6 +341,5 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
   def languageModel[N: Numeric](schema: SchemaDocument[N]): SValidation[Set[LangType]] = ScalaModelGenerator(schema)
 
 }
-
 
 object ScalaCmd extends GeneratorCommand(List(new ScalaGenerator with ConsoleLogging {}))

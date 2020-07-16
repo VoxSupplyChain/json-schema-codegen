@@ -2,7 +2,7 @@ package json.schema
 
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.nio.file.{StandardOpenOption, Files, Path}
+import java.nio.file.{Files, Path, StandardOpenOption}
 
 import json.schema.parser.{JsonSchemaParser, SchemaDocument}
 import json.source.JsonSource
@@ -37,8 +37,16 @@ package object codegen {
     override lazy val referenced: Set[LangType] = nested.referenced + nested
   }
 
-  sealed case class ClassType(scope: String, identifier: String, properties: List[LangTypeProperty], additionalNested: Option[LangType]) extends LangType {
-    override lazy val referenced: Set[LangType] = properties.map(t => t.isa.referenced + t.isa).toSet.flatten ++ additionalNested.map(t => t.referenced + t).getOrElse(Set.empty)
+  sealed case class ClassType(
+      scope: String,
+      identifier: String,
+      properties: List[LangTypeProperty],
+      additionalNested: Option[LangType]
+  ) extends LangType {
+    override lazy val referenced: Set[LangType] =
+      properties.map(t => t.isa.referenced + t.isa).toSet.flatten ++ additionalNested
+        .map(t => t.referenced + t)
+        .getOrElse(Set.empty)
   }
 
   sealed case class EnumType(scope: String, identifier: String, nested: LangType, enums: Set[_]) extends LangType {
@@ -46,7 +54,6 @@ package object codegen {
   }
 
   case class LangTypeProperty(name: String, required: Boolean, isa: LangType)
-
 
   implicit class ParserWrapper[N: Numeric](jsonParser: JsonSchemaParser[N]) {
 
@@ -95,52 +102,54 @@ package object codegen {
 
   trait CodeGenerator extends Naming with Logging {
 
-    protected def generateFile(codePackage: String, fileName: String, outputDir: Path)(content: Option[String] => SValidation[String]): SValidation[List[Path]] = {
-
+    protected def generateFile(codePackage: String, fileName: String, outputDir: Path)(
+        content: Option[String] => SValidation[String]
+    ): SValidation[List[Path]] =
       Try {
-        content(codePackage.some.noneIfEmpty) map {
-          fileContent =>
+        content(codePackage.some.noneIfEmpty) map { fileContent =>
+          if (fileContent.trim.isEmpty)
+            Nil
+          else {
 
-            if (fileContent.trim.isEmpty)
-              Nil
-            else {
+            val packageDir = codePackage.replaceAll("\\.", File.separator)
 
-              val packageDir = codePackage.replaceAll("\\.", File.separator)
+            // create package structure
+            val fileDir: Path = outputDir.resolve(packageDir)
 
-              // create package structure
-              val fileDir: Path = outputDir.resolve(packageDir)
+            if (!fileDir.toFile.exists())
+              Files.createDirectories(fileDir)
 
-              if (!fileDir.toFile.exists())
-                Files.createDirectories(fileDir)
-
-              val generateAbsoluteFile: Path = fileDir.resolve(fileName)
-              Files.deleteIfExists(generateAbsoluteFile)
-              List(
-                Files.write(generateAbsoluteFile, fileContent.getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE_NEW)
+            val generateAbsoluteFile: Path = fileDir.resolve(fileName)
+            Files.deleteIfExists(generateAbsoluteFile)
+            List(
+              Files.write(
+                generateAbsoluteFile,
+                fileContent.getBytes(StandardCharsets.UTF_8),
+                StandardOpenOption.CREATE_NEW
               )
+            )
 
-            }
+          }
         }
       }.recover {
         case e: Throwable => e.toString.left
       }.get
 
-    }
-
-
     private def packageModels(models: Set[LangType]): Map[String, Set[LangType]] = models.groupBy(_.scope)
 
     protected implicit val ev: ===[SValidation[List[Path]], SValidation[List[Path]]] = Leibniz.refl
-    implicit val evset: ===[SValidation[Set[LangType]], SValidation[Set[LangType]]] = Leibniz.refl
+    implicit val evset: ===[SValidation[Set[LangType]], SValidation[Set[LangType]]]  = Leibniz.refl
 
-    def apply[N: Numeric](schemas: List[SchemaDocument[N]])(packageFilter: String => Boolean, codeGenTarget: Path): SValidation[List[Path]] = {
+    def apply[N: Numeric](
+        schemas: List[SchemaDocument[N]]
+    )(packageFilter: String => Boolean, codeGenTarget: Path): SValidation[List[Path]] = {
 
       implicit val evdoc: ===[SValidation[SchemaDocument[N]], SValidation[SchemaDocument[N]]] = Leibniz.refl
 
       for {
         models <- schemas.map(schema => languageModel(schema).withDebug("generated object model")).sequenceU
         modelsByPackage: Map[String, Set[LangType]] = packageModels(models.flatMap(_.toList).toSet)
-        modelsToGenerate = modelsByPackage.filter(pkg => packageFilter(pkg._1))
+        modelsToGenerate                            = modelsByPackage.filter(pkg => packageFilter(pkg._1))
         modelFiles <- modelsToGenerate.map {
           case (packageName, packageModels) =>
             generateModelFiles(packageModels, packageName, codeGenTarget).withDebug("model files")
