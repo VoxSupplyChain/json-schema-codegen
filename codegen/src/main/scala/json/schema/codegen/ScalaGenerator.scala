@@ -128,17 +128,15 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         val addClassReference = genPropertyType(additionalType)
         val addPropNames      = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         s"""
-           private def ${className}SimpleCodec = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])
-
-           implicit def ${className}Codec = CodecJson.derived(EncodeJson {
+           implicit def ${className}Codec = CodecJson.derived(EncodeJson[$className] {
               v =>
-                val j = ${className}SimpleCodec.encode(v)
+                val j = EncodeJson.of[$className].encode(v)
                 val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
                 nj.hcursor.downField("$addPropName").deleteGoParent.focus.getOrElse(nj)
-            }, DecodeJson {
+            }, DecodeJson[$className] {
               c =>
                 val md: DecodeJson[Option[Map[String, $addClassReference]]] = implicitly
-                val od: DecodeJson[$className] = ${className}SimpleCodec
+                val od: DecodeJson[$className] = DecodeJson.of[$className]
                 for {
                   o <- od.decode(c)
                   withoutProps = List($propNames).foldLeft(c)((c, f) => c.downField(f).deleteGoParent.hcursor.getOrElse(c))
