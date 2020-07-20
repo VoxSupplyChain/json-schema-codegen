@@ -331,10 +331,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
     }
 
-  def memberName(s: String): Option[String] = {
-    val camel: String = underscoreToCamel(identifier(s))
-    Some(escapeReserved(camel))
-  }
+  def memberName(s: String): Option[String] = Some(escapeReserved(identifier(s)))
 
   def languageModel[N: Numeric](schema: SchemaDocument[N]): SValidation[Set[LangType]] = ScalaModelGenerator(schema)
 

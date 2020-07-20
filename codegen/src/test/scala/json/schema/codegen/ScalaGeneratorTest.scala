@@ -73,7 +73,7 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |"enum":["a 1","b"]
         |}
       """.stripMargin) shouldBe \/-("""
-        |object Product extends Enumeration { val a1 = Value("a 1")
+        |object Product extends Enumeration { val a_1 = Value("a 1")
         |val b = Value("b") }""".stripMargin.trim)
     gen("""
         |{
@@ -126,7 +126,7 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |"big number":{"type":"number"}
         |}
         |}
-      """.stripMargin) shouldBe \/-("""case class Product(bigNumber:Option[Double])""".stripMargin.trim)
+      """.stripMargin) shouldBe \/-("""case class Product(big_number:Option[Double])""".stripMargin.trim)
   }
 
   it should "generate type with escaped name" in {
@@ -137,7 +137,7 @@ class ScalaGeneratorTest extends FlatSpec with Matchers with ScalaGenerator with
         |"enum":["a 1","b"]
         |}
       """.stripMargin) shouldBe \/-("""
-        |object Type extends Enumeration { val a1 = Value("a 1")
+        |object Type extends Enumeration { val a_1 = Value("a 1")
         |val b = Value("b") }""".stripMargin.trim)
   }
 
