@@ -156,7 +156,7 @@ package object codegen {
         }.toList.sequenceU
         codecFiles <- modelsToGenerate.map {
           case (packageName, packageModels) =>
-            generateCodecFiles(packageModels, packageName, codeGenTarget).withDebug("serializatoin files")
+            generateCodecFiles(packageModels, packageName, codeGenTarget).withDebug("serialization files")
         }.toList.sequenceU
         predefinedCodecs <- generateCodecFiles(codeGenTarget).withDebug("serialization files")
       } yield {
