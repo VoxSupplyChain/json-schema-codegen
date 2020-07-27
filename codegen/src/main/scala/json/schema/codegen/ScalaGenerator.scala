@@ -121,6 +121,11 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     val propNames = c.properties.map(p => '"' + p.name + '"').mkString(", ")
     val className = c.identifier
 
+    // Special use case:
+    // When the class name contains reserved keywords, for example type, class, then the generated scala case class field name will be prefixed with an underscore
+    // In this case only the casecodecs
+    val useCaseCodec = c.properties.map(_.name).exists(reservedKeywords.contains)
+
     c.additionalNested match {
       case None =>
         s"""implicit def ${className}Codec = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])"""
