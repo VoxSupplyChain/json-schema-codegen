@@ -126,7 +126,6 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         s"""implicit def ${className}Codec = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])"""
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
-        val addPropNames      = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         s"""
            implicit def ${className}Codec = CodecJson.derived(EncodeJson[$className] {
               v =>
