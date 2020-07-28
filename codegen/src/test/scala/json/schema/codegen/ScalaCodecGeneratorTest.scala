@@ -16,7 +16,7 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
       }.filter(_.nonEmpty).mkString("\n")
     }
 
-  it should "generate codec with case classes when field name is scala keyword" in {
+  it should "generate case codec implicits when field name is scala keyword" in {
     val codec = gen(
       """
         |{
@@ -29,19 +29,22 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
         |"required":["type"]
         |}
       """.stripMargin)
-    println(codec)
-    // TODO: continue from here
+    codec shouldBe \/-("""implicit def ProductCodec = casecodec2(Product.apply, Product.unapply)("type", "b")""".stripMargin.trim)
+  }
 
-    //shouldBe \/-("""case class Product(_type:String, b:Option[Double])""".stripMargin.trim)
-    gen(
+  it should "generate derived codec implicits when field name is not a scala keyword" in {
+    val codec = gen(
       """
         |{
         | "id": "http://some/product",
         |"type":"object",
         |"properties": {
-        |"big number":{"type":"number"}
+        |"notKeyword":{"type":"string"},
+        |"b":{"type":"number"}
+        |},
+        |"required":["type"]
         |}
-        |}
-      """.stripMargin) shouldBe \/-("""case class Product(big_number:Option[Double])""".stripMargin.trim)
+      """.stripMargin)
+    codec shouldBe \/-("""implicit def ProductCodec = CodecJson.derived(EncodeJson.of[Product], DecodeJson.of[Product])""".stripMargin.trim)
   }
 }
