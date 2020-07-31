@@ -17,7 +17,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   def generateCodecFiles(outputDir: Path): SValidation[List[Path]] = {
     val codecClassName: String = "Codecs"
-    val fileName: String = codecClassName.toLowerCase + ".scala"
+    val fileName: String       = codecClassName.toLowerCase + ".scala"
     generateFile(predefinedPackageCodec, fileName, outputDir) { packageName =>
       val codecs = List(
         genCodecURI(),
@@ -51,7 +51,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   def generateCodecFiles(ts: Set[LangType], scope: String, outputDir: Path): SValidation[List[Path]] = {
     val codecClassName: String = "Codecs"
-    val fileName: String = codecClassName + ".scala"
+    val fileName: String       = codecClassName + ".scala"
 
     val formatTypes: Set[LangType] = ScalaModelGenerator.format2scala.values.toSet
 
@@ -69,8 +69,8 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
       val codecs = ts.map {
         case t: ClassType => genCodecClass(t)
-        case t: EnumType => genCodecEnum(t)
-        case _ => ""
+        case t: EnumType  => genCodecEnum(t)
+        case _            => ""
       }.filter(!_.trim.isEmpty).mkString("\n")
 
       if (codecs.isEmpty)
@@ -98,7 +98,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     val fileName: String = "model.scala"
     generateFile(scope, fileName, outputDir) { packageName =>
       val packageDecl = packageName.map(p => s"package $p\n\n").getOrElse("")
-      val modelDecl = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
+      val modelDecl   = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
       if (modelDecl.isEmpty)
         "".right
       else {
@@ -121,22 +121,52 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     val propNames = c.properties.map(p => '"' + p.name + '"').mkString(", ")
     val className = c.identifier
 
-    // Special use case:
-    // When the class name contains reserved keywords (for example type, class, etc.),
-    // then the generated scala case class field name will be prefixed with an underscore - in this case only the casecodecs.
-    // Otherwise use the derived codecs without having the limitation of the 22 fields.
-    // The recommendation is to try to avoid having field names as reserved keywords.
-    val useCaseCodec = c.properties.map(_.name).exists(reservedKeywords.contains)
-
+    // Adaptive use case:
+    // - use case codecs when is possible, less than 23 fields
+    // - otherwise use dervied codecs with macros - slowing down the compilations times
+    // - fail if field name is a reserved keyword and there are more than the 22 fields - can't be handled with derived codecs,
+    //   it means that the field name needs to be renamed, to a non reserved keyword
+    val hasMoreThan22Fields = c.properties.size > 22
+    if (c.properties.map(_.name).exists(reservedKeywords.contains) && hasMoreThan22Fields) {
+      val reservedNames = c.properties.map(_.name).filter(reservedKeywords.contains)
+      throw new IllegalArgumentException(
+        s"unable to generate codecs for field names ${reservedNames.mkString(",")}, please rename it to a non Scala keyword"
+      )
+    }
+    if (hasMoreThan22Fields) {
+      info(s"using derived codecs for $className ...")
+    }
+    val useCaseCodec = !hasMoreThan22Fields
     c.additionalNested match {
       case None =>
         val codecStatement = useCaseCodec.fold(
           s"casecodec${c.properties.length}($className.apply, $className.unapply)($propNames)",
-          s"CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])")
+          s"CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])"
+        )
         s"""implicit def ${className}Codec = $codecStatement"""
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
-        s"""
+        useCaseCodec.fold(
+          s"""
+           private def ${className}SimpleCodec: CodecJson[$className] = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])
+
+           implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
+              v =>
+                val j = ${className}SimpleCodec.encode(v)
+                val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
+                nj.hcursor.downField("$addPropName").deleteGoParent.focus.getOrElse(nj)
+            }, DecodeJson {
+              c =>
+                val md: DecodeJson[Option[Map[String, $addClassReference]]] = implicitly
+                val od: DecodeJson[$className] = ${className}SimpleCodec
+                for {
+                  o <- od.decode(c)
+                  withoutProps = List($propNames).foldLeft(c)((c, f) => c.downField(f).deleteGoParent.hcursor.getOrElse(c))
+                  m <- md.decode(withoutProps)
+                } yield o.copy($addPropName = m)
+            })
+       """.stripMargin,
+          s"""
            implicit def ${className}Codec = CodecJson.derived(EncodeJson[$className] {
               v =>
                 val j = EncodeJson.of[$className].encode(v)
@@ -153,28 +183,26 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
                 } yield o.copy($addPropName = m)
             })
        """.stripMargin
+        )
+
     }
   }
 
   def genCodecEnum(c: EnumType): String = {
-    val enumTypeName = c.identifier
-    val enumNameReference = genPropertyType(c)
+    val enumTypeName        = c.identifier
+    val enumNameReference   = genPropertyType(c)
     val nestedTypeReference = genPropertyType(c.nested)
     s"""
-       implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${
-      if (
-        nestedTypeReference == "String"
-      ) "toString"
-      else "id"
-    }.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
+       implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (
+      nestedTypeReference == "String"
+    ) "toString"
+    else "id"}.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
          s: $nestedTypeReference =>
           try{
-            DecodeResult.ok(${if (c.nested.identifier == "String") enumTypeName + ".withName" else enumTypeName}(${
-      if (
-        c.nested.identifier == "String"
-      ) "s"
-      else "s.toInt"
-    }))
+            DecodeResult.ok(${if (c.nested.identifier == "String") enumTypeName + ".withName" else enumTypeName}(${if (
+      c.nested.identifier == "String"
+    ) "s"
+    else "s.toInt"}))
           } catch {
             case e:NoSuchElementException => DecodeResult.fail("$enumTypeName", j.history)
           }
@@ -279,7 +307,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     else
       t match {
         case lt: AliasType => lt.scope + ".types." + name
-        case lt => lt.scope + "." + name
+        case lt            => lt.scope + "." + name
       }
 
   def genPropertyType(t: LangType): String =
