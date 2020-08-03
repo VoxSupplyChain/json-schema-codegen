@@ -133,9 +133,8 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         s"unable to generate codecs for field names ${reservedNames.mkString(",")}, please rename it to a non Scala keyword"
       )
     }
-    if (hasMoreThan22Fields) {
+    if (hasMoreThan22Fields)
       info(s"using derived codecs for $className ...")
-    }
     val useCaseCodec = !hasMoreThan22Fields
     c.additionalNested match {
       case None =>
@@ -143,12 +142,13 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           s"casecodec${c.properties.length}($className.apply, $className.unapply)($propNames)",
           s"CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])"
         )
-        s"""implicit def ${className}Codec = $codecStatement"""
+        s"""implicit def ${className}Codec = $codecStatement""".stripMargin
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
+        val addPropNames      = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
         useCaseCodec.fold(
           s"""
-           private def ${className}SimpleCodec: CodecJson[$className] = CodecJson.derived(EncodeJson.of[$className], DecodeJson.of[$className])
+           private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
 
            implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
               v =>
