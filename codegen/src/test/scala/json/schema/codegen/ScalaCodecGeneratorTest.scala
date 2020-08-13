@@ -12,13 +12,12 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
     parse(s).map { ts =>
       ts.map {
         case t: ClassType => genCodecClass(t).trim
-        case _ => ""
+        case _            => ""
       }.filter(_.nonEmpty).mkString("\n")
     }
 
   it should "generate case codec implicits when are less than 22 fields" in {
-    val codec = gen(
-      """
+    val codec = gen("""
         |{
         | "id": "http://some/product",
         |"type":"object",
@@ -29,12 +28,13 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
         |"required":["type"]
         |}
       """.stripMargin)
-    codec shouldBe \/-("""implicit def ProductCodec = casecodec2(Product.apply, Product.unapply)("type", "b")""".stripMargin.trim)
+    codec shouldBe \/-(
+      """implicit def ProductCodec: CodecJson[Product] = casecodec2(Product.apply, Product.unapply)("type", "b")""".stripMargin.trim
+    )
   }
 
   it should "generate derived codec implicits when are more than 22 fields" in {
-    val codec = gen(
-      """
+    val codec = gen("""
         |{
         | "id": "http://some/product",
         |"type":"object",
@@ -67,12 +67,13 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
         |"required":["b0"]
         |}
       """.stripMargin)
-    codec shouldBe \/-("""implicit def ProductCodec = CodecJson.derived(EncodeJson.of[Product], DecodeJson.of[Product])""".stripMargin.trim)
+    codec shouldBe \/-(
+      """implicit def ProductCodec: CodecJson[Product] = CodecJson.derived(EncodeJson.of[Product], DecodeJson.of[Product])""".stripMargin.trim
+    )
   }
 
   it should "fail to generate derived codec implicits when are more than 22 fields and a field name is a scala keyword" in {
-    an[IllegalArgumentException] should be thrownBy gen(
-      """
+    an[IllegalArgumentException] should be thrownBy gen("""
         |{
         | "id": "http://some/product",
         |"type":"object",
@@ -139,6 +140,6 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
             |                  m <- md.decode(withoutProps)
             |                } yield o.copy(_additional = m)
             |            })
-            |implicit def NestedCodec = casecodec0(Nested.apply, Nested.unapply)()""".stripMargin)
+            |implicit def NestedCodec: CodecJson[Nested] = casecodec0(Nested.apply, Nested.unapply)()""".stripMargin)
   }
 }
