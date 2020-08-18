@@ -67,8 +67,8 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
         |"required":["b0"]
         |}
       """.stripMargin)
-    codec shouldBe \/-(
-      """implicit def ProductCodec: CodecJson[Product] = CodecJson.derived(EncodeJson.of[Product], DecodeJson.of[Product])""".stripMargin.trim
+    codec shouldBe \/-( // Note: No type declaration on this one, since it will cause a stack overflow error
+      """implicit def ProductCodec = CodecJson.derived(EncodeJson.of[Product], DecodeJson.of[Product])""".stripMargin.trim
     )
   }
 
