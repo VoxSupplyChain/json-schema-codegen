@@ -140,6 +140,6 @@ class ScalaCodecGeneratorTest extends FlatSpec with Matchers with ScalaGenerator
             |                  m <- md.decode(withoutProps)
             |                } yield o.copy(_additional = m)
             |            })
-            |implicit def NestedCodec: CodecJson[Nested] = casecodec0(Nested.apply, Nested.unapply)()""".stripMargin)
+            |implicit def productDefinitionsNestedCodec: CodecJson[Nested] = casecodec0(Nested.apply, Nested.unapply)()""".stripMargin)
   }
 }

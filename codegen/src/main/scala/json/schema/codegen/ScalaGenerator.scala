@@ -118,8 +118,9 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
   }
 
   def genCodecClass(c: ClassType): String = {
-    val propNames = c.properties.map(p => '"' + p.name + '"').mkString(", ")
-    val className = c.identifier
+    val propNames       = c.properties.map(p => '"' + p.name + '"').mkString(", ")
+    val className       = c.identifier
+    val globalClassName = genGlobalName(c.scope, className)
 
     // Adaptive use case:
     // - use case codecs when is possible, less than 23 fields
@@ -146,7 +147,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           s": CodecJson[$className]",
           ""
         )
-        s"""implicit def ${className}Codec$typeDeclaration = $codecStatement""".stripMargin
+        s"""implicit def ${globalClassName}Codec$typeDeclaration = $codecStatement""".stripMargin
       case Some(additionalType) =>
         val addClassReference = genPropertyType(additionalType)
         val addPropNames      = propNames + (propNames.isEmpty ? "" | ", ") + '"' + addPropName + '"'
@@ -154,7 +155,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           s"""
            private def ${className}SimpleCodec: CodecJson[$className] = casecodec${c.properties.length + 1}($className.apply, $className.unapply)($addPropNames)
 
-           implicit def ${className}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
+           implicit def ${globalClassName}Codec: CodecJson[$className] = CodecJson.derived(EncodeJson {
               v =>
                 val j = ${className}SimpleCodec.encode(v)
                 val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
@@ -171,7 +172,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
             })
        """.stripMargin,
           s"""
-           implicit def ${className}Codec = CodecJson.derived(EncodeJson[$className] {
+           implicit def ${globalClassName}Codec = CodecJson.derived(EncodeJson[$className] {
               v =>
                 val j = EncodeJson.of[$className].encode(v)
                 val nj = j.field("$addPropName").fold(j)(a => j.deepmerge(a))
@@ -192,12 +193,22 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     }
   }
 
+  private def dotToCamelCase(scope: String): String =
+    if (scope.isEmpty) ""
+    else {
+      val parts = scope.split("\\.")
+      s"${parts.head}${parts.tail.map(e => e.capitalize).mkString}"
+    }
+
+  private def genGlobalName(scope: String, identifier: String) = s"${dotToCamelCase(scope)}${identifier}"
+
   def genCodecEnum(c: EnumType): String = {
     val enumTypeName        = c.identifier
+    val globalEnumTypeName  = genGlobalName(c.scope, enumTypeName)
     val enumNameReference   = genPropertyType(c)
     val nestedTypeReference = genPropertyType(c.nested)
     s"""
-       implicit def ${enumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (
+       implicit def ${globalEnumTypeName}Codec: CodecJson[$enumNameReference] = CodecJson[$enumNameReference]((v: $enumNameReference) => v.${if (
       nestedTypeReference == "String"
     ) "toString"
     else "id"}.asJson, (j: HCursor) => j.as[$nestedTypeReference].flatMap {
