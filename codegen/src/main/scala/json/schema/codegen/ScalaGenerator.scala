@@ -26,7 +26,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         genCodecDate(),
         genCodecDateTime(),
         genCodecTime()
-      ).filter(!_.trim.isEmpty).mkString("\n")
+      ).filter(_.trim.nonEmpty).mkString("\n")
 
       if (codecs.isEmpty)
         "".right
@@ -61,7 +61,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
       )
 
     generateFile(scope, fileName, outputDir) { packageName =>
-      val referencedTypes = ts.flatMap(_.referenced).filter(t => !t.scope.isEmpty && t.scope != scope)
+      val referencedTypes = ts.flatMap(_.referenced).filter(t => t.scope.nonEmpty && t.scope != scope)
       val referencedCodes = referencedTypes.isEmpty ? "" | referencedTypes
         .filterNot(_.isInstanceOf[AliasType])
         .map(codecPackage)
@@ -71,7 +71,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
         case t: ClassType => genCodecClass(t)
         case t: EnumType  => genCodecEnum(t)
         case _            => ""
-      }.filter(!_.trim.isEmpty).mkString("\n")
+      }.filter(_.trim.nonEmpty).mkString("\n")
 
       if (codecs.isEmpty)
         "".right
@@ -98,7 +98,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
     val fileName: String = "model.scala"
     generateFile(scope, fileName, outputDir) { packageName =>
       val packageDecl = packageName.map(p => s"package $p\n\n").getOrElse("")
-      val modelDecl   = ts.map(genTypeDeclaration).filter(!_.trim.isEmpty)
+      val modelDecl   = ts.map(genTypeDeclaration).filter(_.trim.nonEmpty)
       if (modelDecl.isEmpty)
         "".right
       else {
@@ -200,7 +200,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
       s"${parts.head}${parts.tail.map(e => e.capitalize).mkString}"
     }
 
-  private def genGlobalName(scope: String, identifier: String) = s"${dotToCamelCase(scope)}${identifier}"
+  private def genGlobalName(scope: String, identifier: String) = s"${dotToCamelCase(scope)}$identifier"
 
   def genCodecEnum(c: EnumType): String = {
     val enumTypeName        = c.identifier
