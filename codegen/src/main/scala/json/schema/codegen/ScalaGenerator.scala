@@ -36,6 +36,8 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           $packageDecl
 
           import argonaut._, Argonaut._, ArgonautShapeless._
+          import java.time.format.DateTimeFormatter
+          import java.time.ZoneId
 
           trait $codecClassName {
             $codecs
