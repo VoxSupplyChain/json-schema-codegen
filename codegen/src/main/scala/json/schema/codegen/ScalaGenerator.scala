@@ -38,6 +38,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
           import argonaut._, Argonaut._, ArgonautShapeless._
           import java.time.format.DateTimeFormatter
           import java.time.ZoneId
+          import java.net.URISyntaxException
 
           trait $codecClassName {
             $codecs
@@ -239,6 +240,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
                   DecodeResult.ok(new java.net.URI(uri))
                 } catch {
                   case e:NoSuchElementException => DecodeResult.fail("URI", j.history)
+                  case e:URISyntaxException  => DecodeResult.fail("URI syntax", j.history)
                 }
               }
             )
