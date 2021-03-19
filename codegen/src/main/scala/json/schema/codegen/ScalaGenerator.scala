@@ -249,7 +249,7 @@ trait ScalaGenerator extends CodeGenerator with ScalaNaming {
 
   def genCodecDateTime(): String =
     s"""
-    val IsoOffsetDateTimeWithMilliseconds = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    val IsoOffsetDateTimeWithMilliseconds = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSX")
 
     implicit def DateTimeCodec: CodecJson[java.time.OffsetDateTime] =
       CodecJson.derived(
